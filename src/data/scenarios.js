@@ -4,7 +4,7 @@
 export const scenarios = [
   {
     id: "ap-calc",
-    label: "AP Calculus — Derivatives",
+    label: "AP Calculus · Derivatives",
     input: {
       subject: "Mathematics",
       course: "AP Calculus AB",
@@ -22,7 +22,7 @@ export const scenarios = [
   },
   {
     id: "algebra-rural",
-    label: "Algebra — Linear Functions (rural)",
+    label: "Algebra · Linear functions (rural)",
     input: {
       subject: "Mathematics",
       course: "Algebra I",
@@ -40,7 +40,7 @@ export const scenarios = [
   },
   {
     id: "env-sci",
-    label: "Environmental Science — Climate Resilience",
+    label: "Environmental Science · Climate resilience",
     input: {
       subject: "Science",
       course: "Environmental Science",
@@ -58,7 +58,7 @@ export const scenarios = [
   },
   {
     id: "bio-genetics",
-    label: "Biology — Genetics & Community Health",
+    label: "Biology · Genetics & community health",
     input: {
       subject: "Science",
       course: "Biology",

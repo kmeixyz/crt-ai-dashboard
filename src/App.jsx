@@ -3,15 +3,15 @@ import { ToastProvider, useTheme, useRevealOnScroll } from "./components/ui.jsx"
 import Icon from "./components/Icon.jsx";
 import Landing from "./pages/Landing.jsx";
 import Generate from "./pages/Generate.jsx";
-import Foundations from "./pages/Foundations.jsx";
+import About from "./pages/About.jsx";
 import Prompts from "./pages/Prompts.jsx";
 import { defaultInput } from "./data/inputSchema.js";
 
 const NAV = [
   { id: "landing", label: "Home" },
   { id: "generate", label: "Dashboard" },
-  { id: "foundations", label: "Why Lumen" },
   { id: "prompts", label: "Prompt Library" },
+  { id: "about", label: "About the Tech" },
 ];
 
 export default function App() {
@@ -79,8 +79,8 @@ export default function App() {
       <main id="main" ref={mainRef} tabIndex={-1} style={{ outline: "none" }}>
         {route === "landing" && <Landing go={go} />}
         {route === "generate" && <Generate input={input} setInput={setInput} />}
-        {route === "foundations" && <Foundations />}
         {route === "prompts" && <Prompts />}
+        {route === "about" && <About />}
       </main>
 
       <footer className="footer">
@@ -92,12 +92,12 @@ export default function App() {
               </span>
               <div>
                 <strong style={{ color: "var(--c-ink)" }}>Lumen</strong>
-                <span className="muted"> — Culturally Responsive STEM Teaching</span>
+                <span className="muted"> · Culturally responsive STEM teaching</span>
               </div>
             </div>
-            <div className="tiny faint" style={{ maxWidth: "44ch" }}>
-              Review AI outputs for accuracy &amp; cultural fit before classroom use · Never
-              enter personally identifiable student information.
+            <div className="tiny faint" style={{ maxWidth: "46ch" }}>
+              Read AI output for accuracy and cultural fit before you use it in class. Do not enter
+              anything that identifies a specific student.
             </div>
           </div>
         </div>

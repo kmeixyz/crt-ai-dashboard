@@ -114,7 +114,7 @@ export function generateLesson(input) {
         body: [
           readingNote(input),
           (input.learningNeeds || []).includes("Wide readiness range")
-            ? "Tiered task cards: an entry version, a core version, and a challenge extension — same concept, different scaffolding."
+            ? "Tiered task cards: an entry version, a core version, and a challenge extension. Same concept, different scaffolding."
             : "Optional challenge extension for students ready to go deeper.",
           "Students choose their grouping and product format where possible (agency).",
         ],
@@ -166,7 +166,7 @@ export function generateActivity(input) {
       },
       {
         label: "Multiple Ways to Participate (UDL)",
-        body: `Students may contribute through building, calculating, writing, visual design, or oral presentation — every role reaches the same objective.`,
+        body: `Students can take part by building, calculating, writing, designing visuals, or explaining out loud, and every role reaches the same objective.`,
       },
       {
         label: "Low-Tech / Resource Path",
@@ -190,7 +190,7 @@ export function generateAssessment(input, format = "quiz") {
   if (format === "exit") {
     return {
       ...base,
-      title: `Exit Ticket — ${topic}`,
+      title: `Exit Ticket: ${topic}`,
       sections: [
         { label: "Q1 · Recall", body: `Define or state one key idea about ${topic.toLowerCase()}.` },
         { label: "Q2 · Apply (in context)", body: `Use ${topic.toLowerCase()} to answer a quick question set in ${place}.` },
@@ -202,9 +202,9 @@ export function generateAssessment(input, format = "quiz") {
   if (format === "rubric") {
     return {
       ...base,
-      title: `Project Rubric — ${topic}`,
+      title: `Project Rubric: ${topic}`,
       sections: [
-        { label: "Concept Mastery", body: "Emerging → Developing → Proficient → Extending. Language describes what the student CAN do at each level (asset-based)." },
+        { label: "Concept Mastery", body: "Four levels: Emerging, Developing, Proficient, then Extending. Each level describes what the student can do, not what they lack." },
         { label: "Application to Context", body: `Rewards authentic connection of ${topic.toLowerCase()} to ${place}.` },
         { label: "Communication", body: "Multiple valid modes accepted: written, visual, oral, or built (UDL)." },
         { label: "Collaboration & Agency", body: "Credits student ownership, role contribution, and reflection." },
@@ -214,7 +214,7 @@ export function generateAssessment(input, format = "quiz") {
   if (format === "multimodal") {
     return {
       ...base,
-      title: `Alternative Assessments — ${topic}`,
+      title: `Alternative Assessments: ${topic}`,
       sections: [
         { label: "Option A · Build / Model", body: `Construct a physical or digital model demonstrating ${topic.toLowerCase()}.` },
         { label: "Option B · Explain Aloud", body: `Record or deliver a 2-minute explanation using a ${place} example.` },
@@ -226,12 +226,12 @@ export function generateAssessment(input, format = "quiz") {
   // default: quiz
   return {
     ...base,
-    title: `Differentiated Quiz — ${topic}`,
+    title: `Differentiated Quiz: ${topic}`,
     sections: [
       { label: "Q1 (DOK 1)", body: `Identify/define a core term in ${topic.toLowerCase()}.` },
       { label: "Q2 (DOK 2)", body: `Solve a straightforward problem using ${topic.toLowerCase()}.` },
       { label: "Q3 (DOK 2) · context", body: `Apply the concept to a ${place} scenario.` },
-      { label: "Q4 (DOK 3) · choice", body: `Justify your reasoning — respond in writing, with a diagram, OR by recording an explanation.` },
+      { label: "Q4 (DOK 3) · choice", body: `Justify your reasoning. Respond in writing, with a diagram, or by recording an explanation.` },
       { label: "Q5 (DOK 3) · extension", body: `Predict/critique using ${input.studentInterests || "a student-relevant context"}.` },
       { label: "Answer Key & Alternatives", body: "Includes acceptable alternative responses so multiple valid approaches earn credit." },
       { label: "Access Notes", body: [readingNote(input), langNote(input)] },
@@ -246,7 +246,7 @@ export function generateFeedback(input, format = "strengths") {
     strengths: {
       title: "Strengths-Based Feedback",
       sections: [
-        { label: "What you did well", body: `You clearly showed your thinking on ${topic.toLowerCase()} — especially the way you connected it to your own example. Your effort to explain your reasoning stands out.` },
+        { label: "What you did well", body: `You showed your thinking clearly on ${topic.toLowerCase()}, especially the way you connected it to your own example. Your effort to explain your reasoning stands out.` },
         { label: "Your next power move", body: `Try extending one idea a step further: add a second example or check your reasoning against a real ${communityPhrase(input)} case. You're closer than you think.` },
         { label: "Tone check", body: "Warm, specific, zero deficit language. Reading level & language matched to the student." },
       ],
@@ -255,7 +255,7 @@ export function generateFeedback(input, format = "strengths") {
       title: "Growth-Oriented Feedback",
       sections: [
         { label: "You're building", body: `Based on ${work}, you've got the foundation of ${topic.toLowerCase()} in place.` },
-        { label: "Next step", body: "Your next move is one concrete, achievable action — framed as growth, not correction." },
+        { label: "Next step", body: "Your next move is one concrete, achievable action, framed as growth rather than correction." },
       ],
     },
     reflection: {
@@ -283,19 +283,19 @@ export function applyRevision(output, input, actionId) {
   const add = (label, body) => clone.sections.push({ label, body, _revised: true });
   switch (actionId) {
     case "accessible":
-      add("↳ Added: Accessibility Boost", "Text simplified with a vocabulary preview, visuals for each key term, and sentence frames. Directions chunked into numbered steps.");
+      add("Added: Accessibility Boost", "Text is simplified with a vocabulary preview, visuals for each key term, and sentence frames. Directions are broken into numbered steps.");
       break;
     case "pbl":
-      add("↳ Added: Project-Based Extension", `Extend into a mini-project: teams apply ${input.topic || "the concept"} to a real ${communityPhrase(input)} problem and present a recommendation.`);
+      add("Added: Project-Based Extension", `Extend it into a mini-project: teams apply ${input.topic || "the concept"} to a real ${communityPhrase(input)} problem and present a recommendation.`);
       break;
     case "lowtech":
-      add("↳ Added: Low-Tech / Offline Version", "Fully printable, no-device path using paper handouts and simple manipulatives. Nothing requires wifi.");
+      add("Added: Low-Tech / Offline Version", "A fully printable, no-device path using paper handouts and simple manipulatives. Nothing needs wifi.");
       break;
     case "multilingual":
-      add("↳ Added: Multilingual Support", `Key terms, directions, and sentence frames provided in ${input.language && input.language !== "English" ? input.language : "students' home languages"}; cognates highlighted.`);
+      add("Added: Multilingual Support", `Key terms, directions, and sentence frames are provided in ${input.language && input.language !== "English" ? input.language : "students' home languages"}, with cognates highlighted.`);
       break;
     case "cultural":
-      add("↳ Strengthened: Cultural Examples", `Examples re-grounded specifically in ${communityPhrase(input)} and student interests (${input.studentInterests || "student-named topics"}), avoiding generic or stereotyped framing.`);
+      add("Strengthened: Cultural Examples", `Examples are re-grounded specifically in ${communityPhrase(input)} and student interests (${input.studentInterests || "student-named topics"}), so nothing reads as generic or stereotyped.`);
       break;
     default:
       break;
@@ -319,7 +319,7 @@ export function runReview(output, input) {
       pass: hasContext,
       note: hasContext
         ? "Community context was provided and woven through the output."
-        : "No community context was entered — add one so outputs aren't generic.",
+        : "No community context was entered, so add one or the output stays generic.",
     },
     {
       q: "Does it avoid deficit language?",
@@ -339,7 +339,7 @@ export function runReview(output, input) {
     {
       q: "Does it support student agency & avoid stereotypes?",
       pass: true,
-      note: "Reminder: you are the expert on your students — verify the cultural framing is specific and not a stereotype.",
+      note: "Reminder: you know your students best, so check that the cultural framing is specific and not a stereotype.",
     },
   ];
 }

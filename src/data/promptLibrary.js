@@ -63,7 +63,7 @@ CLASS CONTEXT
 Produce a lesson with EXACTLY these sections:
 1. Lesson Title
 2. Learning Objective (measurable, rigorous)
-3. Cultural / Community Connection (specific to the context above — explain the link)
+3. Cultural / Community Connection (specific to the context above, and explain the link)
 4. Warm-Up / Hook (grounded in student interests or community)
 5. Main Activity (multiple means of representation)
 6. Differentiation Supports (for the stated reading levels & needs)

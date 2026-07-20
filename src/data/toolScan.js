@@ -10,7 +10,7 @@ export const toolScan = [
       "Lesson plans, rubrics, IEP helpers, emails",
       "Popular, teacher-trusted UI",
     ],
-    crpUdl: "Partial — has an accommodations tool; culture is not a first-class, structured input.",
+    crpUdl: "Partial. It has an accommodations tool, but culture is not a structured input.",
     gaps: [
       "No structured cultural/community context field",
       "CRP is optional, not a design default",
@@ -25,7 +25,7 @@ export const toolScan = [
       "Tight alignment to Khan content",
       "Teacher lesson-hook and standards tools",
     ],
-    crpUdl: "Low — accessibility via Khan platform; culture not modeled.",
+    crpUdl: "Low. Accessibility comes from the Khan platform; culture is not modeled.",
     gaps: [
       "Content-centric, not community-centric",
       "Limited teacher control over cultural framing",
@@ -55,7 +55,7 @@ export const toolScan = [
       "Feedback and assessment builders",
       "Teacher 'assistant' chat",
     ],
-    crpUdl: "Partial — accessibility options exist; CRP not structured.",
+    crpUdl: "Partial. Accessibility options exist, but CRP is not structured.",
     gaps: [
       "Culture handled ad hoc in free-text prompts",
       "No asset-based feedback framing by default",
@@ -81,7 +81,7 @@ export const toolScan = [
     tool: "Playlab.ai",
     focus: "Build/share custom education AI 'apps'",
     strengths: [
-      "Flexible — teachers craft bespoke bots",
+      "Flexible, since teachers build their own bots",
       "Nonprofit, education-first, shareable",
       "Prompt logic is transparent/editable",
     ],
@@ -119,6 +119,6 @@ export const marketGaps = [
   {
     title: "One coherent teacher workflow",
     detail:
-      "Most tools are collections of disconnected generators. Ours ties context → lesson → activity → assessment → feedback into a single, reusable class profile.",
+      "Most tools are collections of disconnected generators. Ours ties context, lesson, activity, assessment, and feedback into a single, reusable class profile.",
   },
 ];

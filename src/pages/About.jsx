@@ -1,51 +1,31 @@
-import React, { useState } from "react";
-import { Badge, SectionHead } from "../components/ui.jsx";
+import React from "react";
+import { Badge, SectionHead, Accordion } from "../components/ui.jsx";
+import Icon from "../components/Icon.jsx";
 import { glossary } from "../data/glossary.js";
 import { toolScan, marketGaps } from "../data/toolScan.js";
 import { personas } from "../data/personas.js";
 import { userStories, journeyMap, featurePriority } from "../data/userStories.js";
 
-const TABS = [
-  { id: "personas", label: "Personas" },
-  { id: "stories", label: "User Stories" },
-  { id: "journey", label: "Journey Map" },
-  { id: "features", label: "Feature Priority" },
-  { id: "glossary", label: "Glossary" },
-  { id: "toolscan", label: "Tool Scan" },
-];
-
-export default function Foundations() {
-  const [tab, setTab] = useState("personas");
+function Frameworks() {
   return (
-    <div className="page">
-      <div className="container stack">
-        <SectionHead eyebrow="Why Lumen" title="Grounded in research, built for real classrooms">
-          The frameworks, users, and product thinking behind Lumen — from the theory it stands on
-          to the teachers it serves.
-        </SectionHead>
-
-        <div className="chips no-print">
-          {TABS.map((t) => (
-            <button key={t.id} className="chip" aria-pressed={tab === t.id} onClick={() => setTab(t.id)}>
-              {t.label}
-            </button>
-          ))}
+    <div className="acc-pad grid grid-2">
+      {glossary.map((g) => (
+        <div key={g.term} className="card">
+          <h3 style={{ marginBottom: 4 }}>{g.term}</h3>
+          <p className="small" style={{ margin: "0 0 8px", fontWeight: 600 }}>{g.short}</p>
+          <p className="small muted" style={{ marginBottom: 8 }}>{g.definition}</p>
+          <div className="tiny" style={{ padding: "8px 10px", background: "var(--c-primary-soft)", borderRadius: 8, color: "var(--c-primary)" }}>
+            <strong>In the product:</strong> {g.inProduct}
+          </div>
         </div>
-
-        {tab === "personas" && <Personas />}
-        {tab === "stories" && <Stories />}
-        {tab === "journey" && <Journey />}
-        {tab === "features" && <Features />}
-        {tab === "glossary" && <Glossary />}
-        {tab === "toolscan" && <ToolScan />}
-      </div>
+      ))}
     </div>
   );
 }
 
 function Personas() {
   return (
-    <div className="grid grid-3">
+    <div className="acc-pad grid grid-3">
       {personas.map((p) => (
         <div key={p.id} className="card stack">
           <div className="row">
@@ -83,7 +63,7 @@ function Personas() {
 
 function Stories() {
   return (
-    <div className="grid grid-2">
+    <div className="acc-pad grid grid-2">
       {userStories.map((group) => (
         <div key={group.theme} className="card">
           <h3>{group.theme}</h3>
@@ -98,25 +78,27 @@ function Stories() {
 
 function Journey() {
   return (
-    <div className="table-wrap">
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Stage</th><th>Teacher action</th><th>Thinking</th><th>Feeling</th><th>Design opportunity</th>
-          </tr>
-        </thead>
-        <tbody>
-          {journeyMap.map((s, i) => (
-            <tr key={i}>
-              <td><strong>{s.stage}</strong></td>
-              <td>{s.action}</td>
-              <td className="muted">{s.thinking}</td>
-              <td><Badge>{s.feeling}</Badge></td>
-              <td className="muted">{s.opportunity}</td>
+    <div className="acc-pad">
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Stage</th><th>Teacher action</th><th>Thinking</th><th>Feeling</th><th>Design opportunity</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {journeyMap.map((s, i) => (
+              <tr key={i}>
+                <td><strong>{s.stage}</strong></td>
+                <td>{s.action}</td>
+                <td className="muted">{s.thinking}</td>
+                <td><Badge>{s.feeling}</Badge></td>
+                <td className="muted">{s.opportunity}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -128,7 +110,7 @@ function Features() {
     { key: "future", label: "Future", variant: "warn" },
   ];
   return (
-    <div className="grid grid-3">
+    <div className="acc-pad grid grid-3">
       {cols.map((c) => (
         <div key={c.key} className="card">
           <Badge variant={c.variant}>{c.label}</Badge>
@@ -141,26 +123,9 @@ function Features() {
   );
 }
 
-function Glossary() {
-  return (
-    <div className="grid grid-2">
-      {glossary.map((g) => (
-        <div key={g.term} className="card">
-          <h3 style={{ marginBottom: 4 }}>{g.term}</h3>
-          <p className="small" style={{ margin: "0 0 8px", fontWeight: 600 }}>{g.short}</p>
-          <p className="small muted" style={{ marginBottom: 8 }}>{g.definition}</p>
-          <div className="tiny" style={{ padding: "8px 10px", background: "var(--c-primary-soft)", borderRadius: 8, color: "var(--c-primary)" }}>
-            <strong>In the product:</strong> {g.inProduct}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function ToolScan() {
   return (
-    <div className="stack">
+    <div className="acc-pad stack">
       <div className="table-wrap">
         <table className="table">
           <thead>
@@ -181,7 +146,7 @@ function ToolScan() {
           </tbody>
         </table>
       </div>
-      <h3 style={{ marginTop: 8 }}>What's missing — and what we add</h3>
+      <h3 style={{ marginTop: 8 }}>What is missing, and what we add</h3>
       <div className="grid grid-auto">
         {marketGaps.map((g) => (
           <div key={g.title} className="card">
@@ -189,6 +154,31 @@ function ToolScan() {
             <p className="small muted" style={{ margin: "6px 0 0" }}>{g.detail}</p>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+const ITEMS = [
+  { id: "frameworks", title: "The educational frameworks", icon: "bookOpen", content: <Frameworks /> },
+  { id: "personas", title: "Who we built it for", icon: "users", content: <Personas /> },
+  { id: "stories", title: "What teachers asked for", icon: "message", content: <Stories /> },
+  { id: "journey", title: "The teacher's journey", icon: "map", content: <Journey /> },
+  { id: "features", title: "What we build first", icon: "layers", content: <Features /> },
+  { id: "toolscan", title: "How it compares to other tools", icon: "scan", content: <ToolScan /> },
+];
+
+export default function About() {
+  return (
+    <div className="page">
+      <div className="container stack">
+        <SectionHead eyebrow="About the tech" title="The thinking behind Lumen">
+          Lumen started as research, not a product. Below is the groundwork: the frameworks it
+          stands on, the teachers it serves, and how it stacks up against the tools already out
+          there. Open any section you want to dig into.
+        </SectionHead>
+
+        <Accordion items={ITEMS} defaultOpen={["frameworks"]} />
       </div>
     </div>
   );

@@ -50,7 +50,7 @@ export const fieldMeta = {
     label: "Cultural & linguistic assets",
     group: "anchors",
     placeholder: "e.g. bilingual (Spanish), multigenerational households, oral storytelling",
-    hint: "Optional. Assets to build on — never to 'fix'.",
+    hint: "Optional. Build on these, never treat them as something to fix.",
   },
 };
 

@@ -106,8 +106,8 @@
   color-scheme: dark;
 
   --c-ink: #e9eef8;
-  --c-ink-soft: #aeb9cf;
-  --c-ink-faint: #7f8da9;
+  --c-ink-soft: #c4cfe4; /* brightened ~12% for WCAG contrast on dark slate */
+  --c-ink-faint: #9aa7c2;
   --c-line: #26324b;
   --c-line-strong: #3a4864;
   --c-bg: #0b1220;
@@ -146,6 +146,34 @@
   box-sizing: border-box;
 }
 
+/* --- Smooth light/dark crossfade -------------------------------- */
+/* Color-only transitions so the whole screen "melts" into the new
+   theme instead of hard-snapping. Elements with their own transition
+   (buttons, chips, nav) extend it to cover color/background too. */
+body,
+.card,
+.group,
+.topbar,
+.footer,
+.select,
+.table th,
+.table td,
+.table-wrap,
+.doc,
+.doc__section,
+.guardrail,
+.check-item,
+.check-mark,
+.badge,
+.persona-avatar,
+.prompt-block,
+.dropdown__btn,
+.dropdown__menu,
+.skel {
+  transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out,
+    color 0.3s ease-in-out;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -165,8 +193,7 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  transition: background-color var(--dur) var(--ease-out),
-    color var(--dur) var(--ease-out);
+  transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
 }
 
 h1,
@@ -265,15 +292,29 @@ a:hover {
   cursor: pointer;
   transition: transform var(--dur) var(--ease-out),
     box-shadow var(--dur) var(--ease-out),
-    border-color var(--dur) var(--ease-out);
+    border-color 0.3s ease-in-out, background-color 0.3s ease-in-out,
+    color 0.3s ease-in-out;
 }
 .card--interactive:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
   border-color: var(--c-line-strong);
 }
 .card--interactive:active {
   transform: translateY(-1px);
+}
+
+/* Tactile hover for non-clickable content cards (features, prompts) */
+.card--lift {
+  transition: transform var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out),
+    border-color 0.3s ease-in-out, background-color 0.3s ease-in-out,
+    color 0.3s ease-in-out;
+}
+.card--lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--c-line-strong);
 }
 
 /* --- Buttons ----------------------------------------------------- */
@@ -376,7 +417,8 @@ a:hover {
   padding: 11px 13px;
   min-height: 44px;
   transition: border-color var(--dur-fast) var(--ease-out),
-    box-shadow var(--dur-fast) var(--ease-out);
+    box-shadow var(--dur-fast) var(--ease-out),
+    background-color 0.3s ease-in-out, color 0.3s ease-in-out;
 }
 .textarea {
   min-height: 92px;
@@ -389,10 +431,15 @@ a:hover {
 }
 .input:focus,
 .select:focus,
-.textarea:focus {
+.textarea:focus,
+.input:focus-visible,
+.select:focus-visible,
+.textarea:focus-visible {
   outline: none;
   border-color: var(--c-primary);
-  box-shadow: var(--ring);
+  /* Distinct glowing brand-blue border on the active field */
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-primary) 22%, transparent),
+    0 2px 12px color-mix(in srgb, var(--c-primary) 20%, transparent);
 }
 .select {
   appearance: none;
@@ -546,7 +593,9 @@ a:hover {
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
   }
 }

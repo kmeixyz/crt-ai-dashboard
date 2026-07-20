@@ -35,7 +35,7 @@ export const userStories = [
   },
 ];
 
-// Teacher journey map — the core workflow.
+// Teacher journey map, the core workflow.
 export const journeyMap = [
   {
     stage: "1 · Enter Class Context",
@@ -67,8 +67,8 @@ export const journeyMap = [
   },
   {
     stage: "5 · Revise",
-    action: "Applies one-click revisions (more accessible, low-tech, multilingual…).",
-    thinking: "\"Almost — just tweak this part.\"",
+    action: "Applies one-click revisions like more accessible, low-tech, or multilingual.",
+    thinking: "\"Almost there, just tweak this part.\"",
     feeling: "empowered",
     opportunity: "Revision as guided actions, not re-prompting from scratch.",
   },

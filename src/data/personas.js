@@ -40,7 +40,7 @@ export const personas = [
     ],
     frustrations: [
       "Most edtech assumes constant connectivity and 1:1 devices",
-      "He is the entire STEM department — no PLC to lean on",
+      "He is the entire STEM department, with no PLC to lean on",
       "Tools generate device-dependent activities he can't run",
     ],
     quote:
