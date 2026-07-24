@@ -1,7 +1,7 @@
 /* =====================================================================
    Lumen — Design System
    Grounded in a professional edtech palette (navy / blue / emerald),
-   Plus Jakarta Sans, full light + dark support, motion tokens.
+   Inter throughout, full light + dark support, motion tokens.
    All values are semantic tokens so theming is centralized here.
    ===================================================================== */
 
@@ -42,10 +42,12 @@
   --c-warn-soft: #fbf1d9;
 
   /* --- Typography ----------------------------------------------- */
-  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system,
-    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-serif: "Lora", "Iowan Old Style", Georgia, serif;
-  --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Helvetica, Arial,
+    sans-serif;
+  --font-serif: "Inter", system-ui, -apple-system, "Segoe UI", Helvetica, Arial,
+    sans-serif;
+  --font-mono: "Inter", system-ui, -apple-system, "Segoe UI", Helvetica, Arial,
+    sans-serif;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -99,6 +101,26 @@
   --icon-sm: 16px;
   --icon-md: 20px;
   --icon-lg: 24px;
+
+  /* --- Questionnaire (Quick Lookup) ----------------------------- */
+  --c-quiz-accent: #1e3a5f;
+  --c-quiz-on-accent: #ffffff;
+  --c-quiz-selected-bg: #ffffff;
+  --c-quiz-selected-ink: #1e3a5f;
+  --c-option-bg: #e8eef6;
+  --c-option-bg-hover: #dde6f2;
+  --c-option-ink: #3d4a63;
+}
+
+/* Quiz palette overrides for dark theme */
+[data-theme="dark"] {
+  --c-quiz-accent: #2f6fd0;
+  --c-quiz-on-accent: #ffffff;
+  --c-quiz-selected-bg: #17233b;
+  --c-quiz-selected-ink: #a9c7ff;
+  --c-option-bg: #1a2740;
+  --c-option-bg-hover: #223252;
+  --c-option-ink: #c4cfe4;
 }
 
 /* --- Dark theme ------------------------------------------------- */

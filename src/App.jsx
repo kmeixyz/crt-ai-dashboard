@@ -4,14 +4,11 @@ import Icon from "./components/Icon.jsx";
 import Landing from "./pages/Landing.jsx";
 import Generate from "./pages/Generate.jsx";
 import About from "./pages/About.jsx";
-import Prompts from "./pages/Prompts.jsx";
 import { defaultInput } from "./data/inputSchema.js";
 
 const NAV = [
-  { id: "landing", label: "Home" },
-  { id: "generate", label: "Dashboard" },
-  { id: "prompts", label: "Prompt Library" },
-  { id: "about", label: "About the Tech" },
+  { id: "about", label: "About" },
+  { id: "generate", label: "Resource Builder" },
 ];
 
 export default function App() {
@@ -28,7 +25,6 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Move focus to main content on route change (a11y), skip initial mount.
   useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false;
@@ -63,6 +59,12 @@ export default function App() {
             ))}
           </nav>
           <button
+            className="btn btn-primary btn-sm no-print"
+            onClick={() => go("generate")}
+          >
+            <Icon name="message" size="sm" /> Open Builder
+          </button>
+          <button
             className="icon-btn"
             onClick={toggle}
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -70,16 +72,12 @@ export default function App() {
           >
             <Icon name={theme === "dark" ? "sun" : "moon"} size="sm" />
           </button>
-          <button className="btn btn-primary btn-sm no-print" onClick={() => go("generate")}>
-            Open dashboard
-          </button>
         </div>
       </header>
 
       <main id="main" ref={mainRef} tabIndex={-1} style={{ outline: "none" }}>
         {route === "landing" && <Landing go={go} />}
         {route === "generate" && <Generate input={input} setInput={setInput} />}
-        {route === "prompts" && <Prompts />}
         {route === "about" && <About />}
       </main>
 

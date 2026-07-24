@@ -1,12 +1,9 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
 import {
   Badge,
-  Guardrail,
-  SectionHead,
   useToast,
   copyToClipboard,
   download,
-  Dropdown,
   Term,
 } from "../components/ui.jsx";
 import Icon from "../components/Icon.jsx";
@@ -28,7 +25,6 @@ import {
   outputToText,
 } from "../engine/mockAI.js";
 
-const OUTPUT_ICONS = { lesson: "book", activity: "puzzle", assessment: "clipboard", feedback: "message" };
 const REVISION_ICONS = {
   accessible: "access",
   pbl: "puzzle",
@@ -51,10 +47,44 @@ const feedbackFormats = [
 ];
 
 const STEPS = [
-  { id: 0, num: "1", label: "Core Target" },
-  { id: 1, num: "2", label: "Classroom Context" },
-  { id: 2, num: "3", label: "Accommodations & Formats" },
+  { id: 0, num: "1", label: "Format" },
+  { id: 1, num: "2", label: "Class" },
+  { id: 2, num: "3", label: "Context" },
 ];
+
+function OptButton({ selected, onClick, children, ariaLabel }) {
+  return (
+    <button
+      type="button"
+      className={`quiz-opt${selected ? " is-selected" : ""}`}
+      aria-pressed={selected}
+      aria-label={ariaLabel}
+      onClick={onClick}
+    >
+      <span className="quiz-opt__check" aria-hidden="true">
+        <Icon name="check" size="sm" />
+      </span>
+      <span className="quiz-opt__label">{children}</span>
+    </button>
+  );
+}
+
+function Section({ label, action, children, count }) {
+  return (
+    <div className="quiz-section">
+      <div className="quiz-section__head">
+        <span className="quiz-section__label">
+          {label}
+          {typeof count === "number" && (
+            <span className="quiz-count"> ({count} selected)</span>
+          )}
+        </span>
+        {action}
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export default function Generate({ input, setInput }) {
   const toast = useToast();
@@ -65,6 +95,7 @@ export default function Generate({ input, setInput }) {
   const [format, setFormat] = useState("quiz");
   const [genId, setGenId] = useState(0);
   const [step, setStep] = useState(0);
+  const [vh, setVh] = useState(null);
   const panelRefs = useRef([]);
   const outputRef = useRef(null);
 
@@ -76,8 +107,13 @@ export default function Generate({ input, setInput }) {
         ? p.learningNeeds.filter((x) => x !== n)
         : [...p.learningNeeds, n],
     }));
+  const allNeeds = learningNeedOptions.every((n) => input.learningNeeds.includes(n));
+  const toggleAllNeeds = () =>
+    setInput((p) => ({ ...p, learningNeeds: allNeeds ? [] : [...learningNeedOptions] }));
 
-  // Keep off-screen wizard panels out of the tab order for accessibility.
+  const showFormat = input.outputType === "assessment" || input.outputType === "feedback";
+  const formats = input.outputType === "assessment" ? assessmentFormats : feedbackFormats;
+
   useEffect(() => {
     panelRefs.current.forEach((el, i) => {
       if (!el) return;
@@ -85,6 +121,11 @@ export default function Generate({ input, setInput }) {
       else el.setAttribute("inert", "");
     });
   }, [step]);
+
+  useLayoutEffect(() => {
+    const el = panelRefs.current[step];
+    if (el) setVh(el.offsetHeight);
+  }, [step, input, format, showFormat]);
 
   const loadScenario = (s) => {
     setInput((p) => ({ ...p, ...s.input }));
@@ -98,7 +139,7 @@ export default function Generate({ input, setInput }) {
     setLoading(true);
     setReview(null);
     setReviewOpen(false);
-    const fmt = input.outputType === "assessment" || input.outputType === "feedback" ? format : undefined;
+    const fmt = showFormat ? format : undefined;
     const out = await generate(input, { format: fmt });
     setOutput(out);
     setGenId((n) => n + 1);
@@ -140,249 +181,318 @@ export default function Generate({ input, setInput }) {
   const doPrint = () => window.print();
 
   const passCount = review ? review.filter((r) => r.pass).length : 0;
-  const showFormat = input.outputType === "assessment" || input.outputType === "feedback";
-  const formats = input.outputType === "assessment" ? assessmentFormats : feedbackFormats;
+  // Progress fills through the completed portion, matching CensusBot's bar.
+  const progress = ((step + 1) / STEPS.length) * 100;
+  const summaryChips = [
+    labelFor(input.outputType),
+    input.subject,
+    input.grade,
+    input.topic,
+  ].filter(Boolean);
+  const canGenerate = Boolean(input.topic?.trim() || input.subject?.trim());
 
   return (
-    <div className="page">
+    <div className="page page--quiz">
       <div className="container">
-        <SectionHead eyebrow="The Dashboard" title="Build a classroom asset in three steps">
-          Set up your class once, choose what you want to make, then review it and export.
-        </SectionHead>
+        <div className="quiz no-print">
+          <h1 className="quiz-title">Resource Builder</h1>
 
-        <div style={{ marginBottom: 20 }}>
-          <Guardrail>
-            <strong>Before you use it:</strong> read AI output for accuracy and cultural fit
-            first. Do not type anything that identifies a specific student.
-          </Guardrail>
-        </div>
-
-        {/* Quick start */}
-        <div className="card no-print" style={{ marginBottom: 20 }}>
-          <div className="row between" style={{ marginBottom: 10 }}>
-            <strong className="small">Quick start</strong>
-            <span className="tiny faint">load a sample classroom</span>
+          <div className="quiz-progress">
+            <div className="quiz-steps" role="list">
+              {STEPS.map((s, i) => (
+                <React.Fragment key={s.id}>
+                  <button
+                    type="button"
+                    className={`quiz-step${step === s.id ? " is-active" : ""}${step > s.id ? " is-done" : ""}`}
+                    aria-current={step === s.id ? "step" : undefined}
+                    onClick={() => setStep(s.id)}
+                  >
+                    <span className="quiz-step__circle">
+                      {step > s.id ? <Icon name="check" size="sm" /> : s.num}
+                    </span>
+                    <span className="quiz-step__label">{s.label}</span>
+                  </button>
+                  {i < STEPS.length - 1 && (
+                    <span
+                      className={`quiz-conn${step > s.id ? " is-done" : ""}`}
+                      aria-hidden="true"
+                    />
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+            <div className="quiz-bar" aria-hidden="true">
+              <div className="quiz-bar__fill" style={{ width: `${progress}%` }} />
+            </div>
           </div>
-          <div className="chips">
-            {scenarios.map((s) => (
-              <button key={s.id} className="chip" onClick={() => loadScenario(s)}>
-                {s.label}
-              </button>
-            ))}
-          </div>
-        </div>
 
-        {/* ---------- WIZARD ---------- */}
-        <div className="card wizard no-print">
-          <div className="stepper">
-            {STEPS.map((s) => (
-              <button
-                key={s.id}
-                className={`stepper__item${step === s.id ? " is-active" : ""}${step > s.id ? " is-done" : ""}`}
-                onClick={() => setStep(s.id)}
-                aria-current={step === s.id ? "step" : undefined}
+          {step > 0 && summaryChips.length > 0 && (
+            <div className="quiz-summary">
+              <span className="quiz-summary__label">Building:</span>
+              {summaryChips.map((c, i) => (
+                <span key={i} className="quiz-chip">{c}</span>
+              ))}
+            </div>
+          )}
+
+          <div className="quiz-card">
+            <div className="wizard__viewport" style={vh ? { height: vh } : undefined}>
+              <div
+                className="wizard__track"
+                style={{ transform: `translateX(-${step * 100}%)` }}
               >
-                <span className="stepper__bar" />
-                <span className="stepper__label">
-                  <span className="stepper__num">
-                    {step > s.id ? <Icon name="check" size="sm" /> : s.num}
-                  </span>
-                  <span>{s.label}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div className="wizard__viewport">
-            <div className="wizard__track" style={{ transform: `translateX(-${step * 100}%)` }}>
-              {/* Step 1 — Core Target */}
-              <div className="wizard__panel" ref={(el) => (panelRefs.current[0] = el)}>
-                <div className="wizard__head">
-                  <h3>Core target</h3>
-                  <p className="muted small" style={{ margin: 0 }}>
-                    The subject and topic you are teaching.
+                {/* Step 1 — Format (Metrics-style pill grids) */}
+                <div className="wizard__panel" ref={(el) => (panelRefs.current[0] = el)}>
+                  <h2 className="quiz-q">What would you like to create?</h2>
+                  <p className="quiz-sub">
+                    Choose a format, then the supports your students need.
                   </p>
-                </div>
-                {["subject", "course", "grade", "topic"].map((f) => (
-                  <div className="field" key={f}>
-                    <label htmlFor={f}>{fieldMeta[f].label}</label>
-                    <input
-                      id={f}
-                      className="input"
-                      value={input[f]}
-                      placeholder={fieldMeta[f].placeholder}
-                      onChange={(e) => set(f, e.target.value)}
-                    />
-                  </div>
-                ))}
-              </div>
 
-              {/* Step 2 — Classroom Context */}
-              <div className="wizard__panel" ref={(el) => (panelRefs.current[1] = el)}>
-                <div className="wizard__head">
-                  <h3>Classroom context</h3>
-                  <p className="muted small" style={{ margin: 0 }}>
-                    This is the part most tools skip. Be specific, and treat what students bring as
-                    an asset (<Term term="CRP">CRP</Term>).
-                  </p>
-                </div>
-                {["studentInterests", "communityContext", "culturalAssets"].map((f) => (
-                  <div className="field" key={f}>
-                    <label htmlFor={f}>{fieldMeta[f].label}</label>
-                    <textarea
-                      id={f}
-                      className="textarea"
-                      value={input[f]}
-                      placeholder={fieldMeta[f].placeholder}
-                      onChange={(e) => set(f, e.target.value)}
-                    />
-                    {fieldMeta[f].hint && <div className="hint">{fieldMeta[f].hint}</div>}
-                  </div>
-                ))}
-              </div>
-
-              {/* Step 3 — Accommodations & Formats */}
-              <div className="wizard__panel" ref={(el) => (panelRefs.current[2] = el)}>
-                <div className="wizard__head">
-                  <h3>Accommodations and formats</h3>
-                  <p className="muted small" style={{ margin: 0 }}>
-                    Reduce barriers up front (<Term term="UDL">UDL</Term>), then pick what to make.
-                  </p>
-                </div>
-
-                <div className="grid grid-2" style={{ gap: 16 }}>
-                  <div className="field">
-                    <label htmlFor="readingLevel">Reading level</label>
-                    <Dropdown
-                      id="readingLevel"
-                      ariaLabel="Reading level"
-                      value={input.readingLevel}
-                      options={readingLevels}
-                      onChange={(v) => set("readingLevel", v)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="language">Language support</label>
-                    <input
-                      id="language"
-                      className="input"
-                      value={input.language}
-                      placeholder="e.g. English, English + Spanish"
-                      onChange={(e) => set("language", e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="field">
-                  <label>Learning needs</label>
-                  <div className="chips">
-                    {learningNeedOptions.map((n) => (
-                      <button
-                        key={n}
-                        className="chip"
-                        aria-pressed={input.learningNeeds.includes(n)}
-                        onClick={() => toggleNeed(n)}
-                      >
-                        {n}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-2" style={{ gap: 16 }}>
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <label>Supports</label>
-                    <div className="chips">
-                      <button className="chip" aria-pressed={input.neurodiverseSupport} onClick={() => set("neurodiverseSupport", !input.neurodiverseSupport)}>
-                        Neurodiverse
-                      </button>
-                      <button className="chip" aria-pressed={input.lowTech} onClick={() => set("lowTech", !input.lowTech)}>
-                        Low-tech / offline
-                      </button>
+                  <Section label="Quick start">
+                    <div className="quiz-grid quiz-grid--2">
+                      {scenarios.map((s) => (
+                        <OptButton key={s.id} selected={false} onClick={() => loadScenario(s)}>
+                          {s.label}
+                        </OptButton>
+                      ))}
                     </div>
-                  </div>
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <label htmlFor="resourceLevel">Resource / tech level</label>
-                    <Dropdown
-                      id="resourceLevel"
-                      ariaLabel="Resource or tech level"
-                      value={input.resourceLevel}
-                      options={resourceLevels}
-                      onChange={(v) => set("resourceLevel", v)}
-                    />
-                  </div>
-                </div>
+                  </Section>
 
-                <div className="field" style={{ marginTop: 20, marginBottom: 0 }}>
-                  <label>What do you want to make?</label>
-                  <div className="out-select">
-                    {outputTypes.map((o) => {
-                      const active = input.outputType === o.value;
-                      return (
-                        <button
+                  <Section label="What to make">
+                    <div className="quiz-grid quiz-grid--2">
+                      {outputTypes.map((o) => (
+                        <OptButton
                           key={o.value}
-                          className={`out-opt${active ? " is-selected" : ""}`}
-                          aria-pressed={active}
+                          selected={input.outputType === o.value}
                           onClick={() => {
                             set("outputType", o.value);
                             if (o.value === "assessment") setFormat("quiz");
                             if (o.value === "feedback") setFormat("strengths");
                           }}
                         >
-                          <svg className="out-opt__border" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                            <rect x="1" y="1" width="98" height="98" rx="14" pathLength="100" />
-                          </svg>
-                          <span className="out-opt__icon">
-                            <Icon name={OUTPUT_ICONS[o.value]} />
-                          </span>
-                          <span>
-                            <strong className="small" style={{ display: "block" }}>{o.label}</strong>
-                            <span className="tiny muted">{o.desc}</span>
-                          </span>
-                        </button>
-                      );
-                    })}
+                          {o.label}
+                        </OptButton>
+                      ))}
+                    </div>
+                  </Section>
+
+                  {showFormat && (
+                    <Section label="Format">
+                      <div className="quiz-grid quiz-grid--2">
+                        {formats.map((f) => (
+                          <OptButton
+                            key={f.value}
+                            selected={format === f.value}
+                            onClick={() => setFormat(f.value)}
+                          >
+                            {f.label}
+                          </OptButton>
+                        ))}
+                      </div>
+                    </Section>
+                  )}
+
+                  <Section label="Reading level">
+                    <div className="quiz-grid quiz-grid--2">
+                      {readingLevels.map((r) => (
+                        <OptButton
+                          key={r.value}
+                          selected={input.readingLevel === r.value}
+                          onClick={() => set("readingLevel", r.value)}
+                        >
+                          {r.label}
+                        </OptButton>
+                      ))}
+                    </div>
+                  </Section>
+
+                  <Section
+                    label="Learning needs"
+                    count={input.learningNeeds.length}
+                    action={
+                      <button type="button" className="quiz-selectall" onClick={toggleAllNeeds}>
+                        <Icon name="check" size="sm" />
+                        {allNeeds ? "Deselect All" : "Select All"}
+                      </button>
+                    }
+                  >
+                    <div className="quiz-grid">
+                      {learningNeedOptions.map((n) => (
+                        <OptButton
+                          key={n}
+                          selected={input.learningNeeds.includes(n)}
+                          onClick={() => toggleNeed(n)}
+                        >
+                          {n}
+                        </OptButton>
+                      ))}
+                    </div>
+                  </Section>
+
+                  <Section label="Additional supports">
+                    <div className="quiz-grid quiz-grid--2">
+                      <OptButton
+                        selected={input.neurodiverseSupport}
+                        onClick={() => set("neurodiverseSupport", !input.neurodiverseSupport)}
+                      >
+                        Neurodiverse supports
+                      </OptButton>
+                      <OptButton
+                        selected={input.lowTech}
+                        onClick={() => set("lowTech", !input.lowTech)}
+                      >
+                        Low-tech / offline
+                      </OptButton>
+                    </div>
+                  </Section>
+
+                  <Section label="Resource / tech level">
+                    <div className="quiz-grid">
+                      {resourceLevels.map((r) => (
+                        <OptButton
+                          key={r.value}
+                          selected={input.resourceLevel === r.value}
+                          onClick={() => set("resourceLevel", r.value)}
+                        >
+                          {r.label}
+                        </OptButton>
+                      ))}
+                    </div>
+                  </Section>
+                </div>
+
+                {/* Step 2 — Class (Location-style form) */}
+                <div className="wizard__panel" ref={(el) => (panelRefs.current[1] = el)}>
+                  <h2 className="quiz-q">What are you teaching?</h2>
+                  <p className="quiz-sub">Subject, course, grade, and the topic for this resource.</p>
+
+                  <div className="quiz-fields">
+                    <div className="quiz-field quiz-field--full">
+                      <label htmlFor="subject">{fieldMeta.subject.label}</label>
+                      <input
+                        id="subject"
+                        className="input"
+                        value={input.subject}
+                        placeholder={fieldMeta.subject.placeholder}
+                        onChange={(e) => set("subject", e.target.value)}
+                      />
+                    </div>
+                    <div className="quiz-field">
+                      <label htmlFor="course">{fieldMeta.course.label}</label>
+                      <input
+                        id="course"
+                        className="input"
+                        value={input.course}
+                        placeholder={fieldMeta.course.placeholder}
+                        onChange={(e) => set("course", e.target.value)}
+                      />
+                    </div>
+                    <div className="quiz-field">
+                      <label htmlFor="grade">{fieldMeta.grade.label}</label>
+                      <input
+                        id="grade"
+                        className="input"
+                        value={input.grade}
+                        placeholder={fieldMeta.grade.placeholder}
+                        onChange={(e) => set("grade", e.target.value)}
+                      />
+                    </div>
+                    <div className="quiz-field quiz-field--full">
+                      <label htmlFor="topic">{fieldMeta.topic.label}</label>
+                      <input
+                        id="topic"
+                        className="input"
+                        value={input.topic}
+                        placeholder={fieldMeta.topic.placeholder}
+                        onChange={(e) => set("topic", e.target.value)}
+                      />
+                    </div>
+                    <div className="quiz-field quiz-field--full">
+                      <label htmlFor="language">Language support</label>
+                      <input
+                        id="language"
+                        className="input"
+                        value={input.language}
+                        placeholder="e.g. English, English + Spanish"
+                        onChange={(e) => set("language", e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {showFormat && (
-                  <div className="field" style={{ marginTop: 16, marginBottom: 0 }}>
-                    <label>Format</label>
-                    <div className="chips">
-                      {formats.map((f) => (
-                        <button key={f.value} className="chip" aria-pressed={format === f.value} onClick={() => setFormat(f.value)}>
-                          {f.label}
-                        </button>
-                      ))}
+                {/* Step 3 — Context (form) */}
+                <div className="wizard__panel" ref={(el) => (panelRefs.current[2] = el)}>
+                  <h2 className="quiz-q">Who are your students?</h2>
+                  <p className="quiz-sub">
+                    Be specific. Treat what they bring as an asset (
+                    <Term term="CRP">CRP</Term>
+                    ).
+                  </p>
+
+                  {["studentInterests", "communityContext", "culturalAssets"].map((f) => (
+                    <div className="quiz-section" key={f}>
+                      <label className="quiz-fieldlabel" htmlFor={f}>
+                        {fieldMeta[f].label}
+                      </label>
+                      <textarea
+                        id={f}
+                        className="textarea"
+                        value={input[f]}
+                        placeholder={fieldMeta[f].placeholder}
+                        onChange={(e) => set(f, e.target.value)}
+                      />
+                      {fieldMeta[f].hint && <div className="quiz-hint">{fieldMeta[f].hint}</div>}
                     </div>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
+            </div>
+
+            <div className="quiz-nav">
+              {step > 0 ? (
+                <button
+                  type="button"
+                  className="quiz-btn quiz-btn--ghost"
+                  onClick={() => setStep((s) => Math.max(0, s - 1))}
+                >
+                  <Icon name="arrowLeft" size="sm" /> Back
+                </button>
+              ) : (
+                <span />
+              )}
+              {step < 2 ? (
+                <button
+                  type="button"
+                  className="quiz-btn quiz-btn--primary"
+                  onClick={() => setStep((s) => Math.min(2, s + 1))}
+                >
+                  Next <Icon name="arrowRight" size="sm" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="quiz-btn quiz-btn--primary"
+                  onClick={run}
+                  disabled={loading || !canGenerate}
+                >
+                  {loading ? (
+                    "Generating…"
+                  ) : (
+                    <>
+                      Generate <Icon name="arrowRight" size="sm" />
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Wizard navigation */}
-          <div className="wizard__nav">
-            <button
-              className="btn btn-ghost"
-              onClick={() => setStep((s) => Math.max(0, s - 1))}
-              disabled={step === 0}
-            >
-              <Icon name="arrowLeft" size="sm" /> Back
-            </button>
-            {step < 2 ? (
-              <button className="btn btn-primary" onClick={() => setStep((s) => Math.min(2, s + 1))}>
-                Next <Icon name="arrowRight" size="sm" />
-              </button>
-            ) : (
-              <button className="btn btn-primary btn-lg" onClick={run} disabled={loading}>
-                {loading ? "Generating…" : (<><Icon name="sparkles" size="sm" /> Generate {labelFor(input.outputType)}</>)}
-              </button>
-            )}
-          </div>
+          <p className="quiz-note">
+            Review AI output for accuracy and cultural fit before you use it in class. Never enter
+            anything that identifies a specific student.
+          </p>
         </div>
 
-        {/* ---------- OUTPUT ---------- */}
         <div ref={outputRef} style={{ marginTop: 28, scrollMarginTop: 84 }}>
           {loading && <SkeletonOutput />}
 
@@ -390,19 +500,33 @@ export default function Generate({ input, setInput }) {
             <div className="stack">
               <div className="card no-print">
                 <div className="row row-wrap between" style={{ gap: 10 }}>
-                  <Badge variant="green"><Icon name="check" size="sm" /> Ready to review</Badge>
+                  <Badge variant="green">
+                    <Icon name="check" size="sm" /> Ready to review
+                  </Badge>
                   <div className="row row-wrap" style={{ gap: 6 }}>
-                    <button className="btn btn-ghost btn-sm" onClick={doReview} aria-expanded={reviewOpen}>
-                      <Icon name="shieldCheck" size="sm" /> {reviewOpen ? "Hide review" : "Review for bias & fit"}
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={doReview}
+                      aria-expanded={reviewOpen}
+                    >
+                      <Icon name="shieldCheck" size="sm" />{" "}
+                      {reviewOpen ? "Hide review" : "Review for bias & fit"}
                     </button>
-                    <button className="btn btn-subtle btn-sm" onClick={doCopy}><Icon name="copy" size="sm" /> Copy</button>
-                    <button className="btn btn-subtle btn-sm" onClick={doMarkdown}><Icon name="download" size="sm" /> Markdown</button>
-                    <button className="btn btn-subtle btn-sm" onClick={doText}><Icon name="fileText" size="sm" /> Text</button>
-                    <button className="btn btn-subtle btn-sm" onClick={doPrint}><Icon name="printer" size="sm" /> Print</button>
+                    <button className="btn btn-subtle btn-sm" onClick={doCopy}>
+                      <Icon name="copy" size="sm" /> Copy
+                    </button>
+                    <button className="btn btn-subtle btn-sm" onClick={doMarkdown}>
+                      <Icon name="download" size="sm" /> Markdown
+                    </button>
+                    <button className="btn btn-subtle btn-sm" onClick={doText}>
+                      <Icon name="fileText" size="sm" /> Text
+                    </button>
+                    <button className="btn btn-subtle btn-sm" onClick={doPrint}>
+                      <Icon name="printer" size="sm" /> Print
+                    </button>
                   </div>
                 </div>
 
-                {/* Collapsible review slides down from the top of the output */}
                 <div className={`collapse${reviewOpen ? " is-open" : ""}`}>
                   <div className="collapse__inner">
                     {review && (
@@ -418,7 +542,9 @@ export default function Generate({ input, setInput }) {
                               <Icon name={r.pass ? "check" : "alert"} size="sm" />
                             </span>
                             <div>
-                              <div className="small" style={{ fontWeight: 600 }}>{r.q}</div>
+                              <div className="small" style={{ fontWeight: 600 }}>
+                                {r.q}
+                              </div>
                               <div className="tiny muted">{r.note}</div>
                             </div>
                           </div>
@@ -446,15 +572,12 @@ export default function Generate({ input, setInput }) {
               </div>
             </div>
           )}
-
-          {!loading && !output && <EmptyState />}
         </div>
       </div>
     </div>
   );
 }
 
-// Skeleton wireframe that mirrors the modular output layout.
 function SkeletonOutput() {
   return (
     <div className="out-grid" aria-hidden="true">
@@ -482,30 +605,18 @@ function SkeletonOutput() {
   );
 }
 
-function EmptyState() {
+function labelFor(t) {
   return (
-    <div className="card center" style={{ padding: "56px 28px" }}>
-      <svg className="empty-illo" viewBox="0 0 132 96" fill="none" aria-hidden="true">
-        <rect x="26" y="10" width="80" height="76" rx="8" stroke="currentColor" strokeWidth="2.5" />
-        <line className="pulse" x1="40" y1="30" x2="92" y2="30" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
-        <line className="pulse" x1="40" y1="44" x2="80" y2="44" stroke="currentColor" strokeWidth="4" strokeLinecap="round" style={{ animationDelay: "0.3s" }} />
-        <line className="pulse" x1="40" y1="58" x2="88" y2="58" stroke="currentColor" strokeWidth="4" strokeLinecap="round" style={{ animationDelay: "0.6s" }} />
-        <line className="pulse" x1="40" y1="72" x2="66" y2="72" stroke="currentColor" strokeWidth="4" strokeLinecap="round" style={{ animationDelay: "0.9s" }} />
-        <path d="M104 18c.7 3.4 2.3 5 5.7 5.7-3.4.7-5 2.3-5.7 5.7-.7-3.4-2.3-5-5.7-5.7 3.4-.7 5-2.3 5.7-5.7Z" fill="var(--c-primary)" opacity="0.9" />
-      </svg>
-      <h3 style={{ marginTop: 0 }}>Your material shows up here</h3>
-      <p className="muted" style={{ margin: "0 auto", maxWidth: "42ch" }}>
-        Work through the three steps above and press Generate. We will build your customized asset
-        right here, one card at a time.
-      </p>
-    </div>
+    { lesson: "Lesson Plan", activity: "Activity", assessment: "Assessment", feedback: "Feedback" }[
+      t
+    ] || ""
   );
 }
-
-function labelFor(t) {
-  return { lesson: "Lesson Plan", activity: "Activity", assessment: "Assessment", feedback: "Feedback" }[t] || "";
-}
 function fileName(output, ext) {
-  const base = (output.title || "output").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
+  const base = (output.title || "output")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48);
   return `${base || "lumen-output"}.${ext}`;
 }
