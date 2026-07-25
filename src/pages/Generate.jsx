@@ -1,13 +1,9 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
-import {
-  Badge,
-  useToast,
-  copyToClipboard,
-  download,
-  Term,
-} from "../components/ui.jsx";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useToast, copyToClipboard, download, Term } from "../components/ui.jsx";
 import Icon from "../components/Icon.jsx";
-import DocView from "../components/DocView.jsx";
+import WizardSteps from "../components/WizardSteps.jsx";
+import StubCombobox from "../components/StubCombobox.jsx";
 import {
   fieldMeta,
   readingLevels,
@@ -24,6 +20,10 @@ import {
   outputToMarkdown,
   outputToText,
 } from "../engine/mockAI.js";
+import ex from "../styles/Explore.module.css";
+
+const WIZARD_STEPS = ["Format", "Class", "Context", "Results"];
+const PROGRESS = { 1: 25, 2: 50, 3: 75, 4: 100 };
 
 const REVISION_ICONS = {
   accessible: "access",
@@ -46,58 +46,118 @@ const feedbackFormats = [
   { value: "family", label: "Family-Friendly" },
 ];
 
-const STEPS = [
-  { id: 0, num: "1", label: "Format" },
-  { id: 1, num: "2", label: "Class" },
-  { id: 2, num: "3", label: "Context" },
+const SUBJECT_OPTIONS = [
+  "Science",
+  "Mathematics",
+  "Computer Science",
+  "Engineering",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "Environmental Science",
 ];
+const COURSE_OPTIONS = [
+  "Algebra I",
+  "Algebra II",
+  "Geometry",
+  "AP Calculus AB",
+  "AP Calculus BC",
+  "Biology",
+  "Chemistry",
+  "Physics",
+  "Environmental Science",
+  "AP Computer Science A",
+  "Intro to Engineering",
+];
+const GRADE_OPTIONS = ["9", "10", "11", "12", "9-10", "10-11", "11-12"];
 
-function OptButton({ selected, onClick, children, ariaLabel }) {
+function Choice({ selected, onClick, children }) {
   return (
-    <button
+    <motion.button
       type="button"
-      className={`quiz-opt${selected ? " is-selected" : ""}`}
-      aria-pressed={selected}
-      aria-label={ariaLabel}
+      className={`${ex.choice} ${selected ? ex.choiceSelected : ""}`}
       onClick={onClick}
+      aria-pressed={selected}
+      whileTap={{ scale: 0.93, transition: { type: "spring", stiffness: 500, damping: 22 } }}
+      whileHover={{ scale: 1.02, transition: { duration: 0.15 } }}
     >
-      <span className="quiz-opt__check" aria-hidden="true">
-        <Icon name="check" size="sm" />
-      </span>
-      <span className="quiz-opt__label">{children}</span>
-    </button>
+      <AnimatePresence initial={false}>
+        {selected && (
+          <motion.span
+            className={ex.choiceCheck}
+            aria-hidden="true"
+            style={{ minWidth: 0, overflow: "hidden", display: "inline-flex" }}
+            initial={{ opacity: 0, scale: 0.3, width: 0, x: -4 }}
+            animate={{ opacity: 1, scale: 1, width: "1em", x: 0 }}
+            exit={{ opacity: 0, scale: 0.3, width: 0, x: -4 }}
+            transition={{ type: "spring", stiffness: 520, damping: 28 }}
+          >
+            ✓
+          </motion.span>
+        )}
+      </AnimatePresence>
+      {children}
+    </motion.button>
   );
 }
 
-function Section({ label, action, children, count }) {
+function MetricGroup({ label, count, action, children }) {
   return (
-    <div className="quiz-section">
-      <div className="quiz-section__head">
-        <span className="quiz-section__label">
+    <motion.div
+      className={ex.metricGroup}
+      variants={{
+        hidden: { opacity: 0, y: 10 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } },
+      }}
+    >
+      <div className={ex.metricGroupHeader}>
+        <span className={ex.metricGroupLabel}>
           {label}
-          {typeof count === "number" && (
-            <span className="quiz-count"> ({count} selected)</span>
-          )}
+          {typeof count === "number" ? ` (${count} selected)` : ""}
         </span>
         {action}
       </div>
       {children}
-    </div>
+    </motion.div>
   );
+}
+
+function labelFor(t) {
+  return (
+    { lesson: "Lesson Plan", activity: "Activity", assessment: "Assessment", feedback: "Feedback" }[
+      t
+    ] || ""
+  );
+}
+
+function fileName(output, ext) {
+  const base = (output.title || "output")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48);
+  return `${base || "lumen-output"}.${ext}`;
 }
 
 export default function Generate({ input, setInput }) {
   const toast = useToast();
+  const [step, setStep] = useState(1);
+  const [fromProgress, setFromProgress] = useState(0);
+  const [progressWidth, setProgressWidth] = useState(0);
+  const [exitDir, setExitDir] = useState(0);
+  const exitTimerRef = useRef(null);
+
   const [output, setOutput] = useState(null);
   const [loading, setLoading] = useState(false);
   const [review, setReview] = useState(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [format, setFormat] = useState("quiz");
   const [genId, setGenId] = useState(0);
-  const [step, setStep] = useState(0);
-  const [vh, setVh] = useState(null);
-  const panelRefs = useRef([]);
-  const outputRef = useRef(null);
+  const [showRevise, setShowRevise] = useState(false);
+
+  const targetProgress = PROGRESS[step] ?? 25;
+  const showFormat = input.outputType === "assessment" || input.outputType === "feedback";
+  const formats = input.outputType === "assessment" ? assessmentFormats : feedbackFormats;
 
   const set = (k, v) => setInput((p) => ({ ...p, [k]: v }));
   const toggleNeed = (n) =>
@@ -109,29 +169,54 @@ export default function Generate({ input, setInput }) {
     }));
   const allNeeds = learningNeedOptions.every((n) => input.learningNeeds.includes(n));
   const toggleAllNeeds = () =>
-    setInput((p) => ({ ...p, learningNeeds: allNeeds ? [] : [...learningNeedOptions] }));
+    setInput((p) => ({
+      ...p,
+      learningNeeds: allNeeds ? [] : [...learningNeedOptions],
+    }));
 
-  const showFormat = input.outputType === "assessment" || input.outputType === "feedback";
-  const formats = input.outputType === "assessment" ? assessmentFormats : feedbackFormats;
+  const contextLabels = useMemo(() => {
+    const labels = [labelFor(input.outputType), input.subject, input.grade, input.topic].filter(
+      Boolean
+    );
+    return labels;
+  }, [input.outputType, input.subject, input.grade, input.topic]);
+
+  const canGenerate = Boolean(input.topic?.trim() || input.subject?.trim());
+  const canLeaveFormat = Boolean(input.outputType);
+  const canLeaveClass = Boolean(input.subject?.trim() || input.topic?.trim());
 
   useEffect(() => {
-    panelRefs.current.forEach((el, i) => {
-      if (!el) return;
-      if (i === step) el.removeAttribute("inert");
-      else el.setAttribute("inert", "");
-    });
-  }, [step]);
+    setProgressWidth(fromProgress);
+    const id = requestAnimationFrame(() => setProgressWidth(targetProgress));
+    return () => cancelAnimationFrame(id);
+  }, [fromProgress, targetProgress, step]);
 
-  useLayoutEffect(() => {
-    const el = panelRefs.current[step];
-    if (el) setVh(el.offsetHeight);
-  }, [step, input, format, showFormat]);
+  useEffect(() => () => clearTimeout(exitTimerRef.current), []);
+
+  function goToStep(next, direction) {
+    setExitDir(direction);
+    clearTimeout(exitTimerRef.current);
+    exitTimerRef.current = setTimeout(() => {
+      setFromProgress(PROGRESS[step] ?? 0);
+      setStep(next);
+      setExitDir(0);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 220);
+  }
+
+  function handleWizardNav(target) {
+    if (target >= step) return;
+    if (target === 1 || target === 2 || target === 3) {
+      goToStep(target, 1);
+    }
+  }
 
   const loadScenario = (s) => {
     setInput((p) => ({ ...p, ...s.input }));
     setOutput(null);
     setReview(null);
-    setStep(0);
+    setReviewOpen(false);
+    setShowRevise(false);
     toast(`Loaded ${s.label}`);
   };
 
@@ -139,14 +224,13 @@ export default function Generate({ input, setInput }) {
     setLoading(true);
     setReview(null);
     setReviewOpen(false);
+    setShowRevise(false);
+    goToStep(4, -1);
     const fmt = showFormat ? format : undefined;
     const out = await generate(input, { format: fmt });
     setOutput(out);
     setGenId((n) => n + 1);
     setLoading(false);
-    requestAnimationFrame(() =>
-      outputRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-    );
   };
 
   const revise = (actionId) => {
@@ -180,443 +264,611 @@ export default function Generate({ input, setInput }) {
   };
   const doPrint = () => window.print();
 
+  const restart = () => {
+    setOutput(null);
+    setReview(null);
+    setReviewOpen(false);
+    setShowRevise(false);
+    setFromProgress(0);
+    goToStep(1, 1);
+  };
+
   const passCount = review ? review.filter((r) => r.pass).length : 0;
-  // Progress fills through the completed portion, matching CensusBot's bar.
-  const progress = ((step + 1) / STEPS.length) * 100;
-  const summaryChips = [
-    labelFor(input.outputType),
-    input.subject,
-    input.grade,
-    input.topic,
-  ].filter(Boolean);
-  const canGenerate = Boolean(input.topic?.trim() || input.subject?.trim());
+  const resultsTitle = input.topic?.trim() || input.subject?.trim() || "your class";
 
   return (
-    <div className="page page--quiz">
-      <div className="container">
-        <div className="quiz no-print">
-          <h1 className="quiz-title">Resource Builder</h1>
+    <div className={ex.wizardPage}>
+      <h1 className={ex.pageTitle}>Resource Builder</h1>
 
-          <div className="quiz-progress">
-            <div className="quiz-steps" role="list">
-              {STEPS.map((s, i) => (
-                <React.Fragment key={s.id}>
-                  <button
-                    type="button"
-                    className={`quiz-step${step === s.id ? " is-active" : ""}${step > s.id ? " is-done" : ""}`}
-                    aria-current={step === s.id ? "step" : undefined}
-                    onClick={() => setStep(s.id)}
-                  >
-                    <span className="quiz-step__circle">
-                      {step > s.id ? <Icon name="check" size="sm" /> : s.num}
-                    </span>
-                    <span className="quiz-step__label">{s.label}</span>
-                  </button>
-                  {i < STEPS.length - 1 && (
-                    <span
-                      className={`quiz-conn${step > s.id ? " is-done" : ""}`}
-                      aria-hidden="true"
-                    />
-                  )}
-                </React.Fragment>
+      <div className={ex.progressBlock}>
+        <WizardSteps current={step} onNavigate={handleWizardNav} steps={WIZARD_STEPS} />
+        <div className={ex.progressTrack}>
+          <div className={ex.progressFill} style={{ width: `${progressWidth}%` }} />
+        </div>
+      </div>
+
+      <motion.div
+        key={step}
+        className={ex.wizardContent}
+        initial={{ opacity: 0, x: fromProgress > targetProgress ? -48 : 48 }}
+        animate={
+          exitDir !== 0
+            ? { opacity: 0, x: exitDir * 48, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } }
+            : { opacity: 1, x: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } }
+        }
+      >
+        {step > 1 && step < 4 && contextLabels.length > 0 && (
+          <AnimatePresence>
+            <motion.div
+              className={ex.contextBadgeStrip}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }}
+              exit={{ opacity: 0, transition: { duration: 0.15 } }}
+            >
+              <span className={ex.contextBadgeLabel}>Building:</span>
+              {contextLabels.map((label, i) => (
+                <motion.span
+                  key={`${label}-${i}`}
+                  className={ex.contextBadge}
+                  initial={{ opacity: 0, scale: 0.78, y: -4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ type: "spring", stiffness: 420, damping: 26, delay: i * 0.05 }}
+                >
+                  {label}
+                </motion.span>
               ))}
-            </div>
-            <div className="quiz-bar" aria-hidden="true">
-              <div className="quiz-bar__fill" style={{ width: `${progress}%` }} />
-            </div>
-          </div>
+            </motion.div>
+          </AnimatePresence>
+        )}
 
-          {step > 0 && summaryChips.length > 0 && (
-            <div className="quiz-summary">
-              <span className="quiz-summary__label">Building:</span>
-              {summaryChips.map((c, i) => (
-                <span key={i} className="quiz-chip">{c}</span>
-              ))}
-            </div>
-          )}
+        {/* ── Step 1: Format (metrics-style choice grids) ── */}
+        {step === 1 && (
+          <>
+            <div className={ex.card}>
+              <p className={ex.question}>What would you like to create?</p>
+              <p className={ex.questionSub}>
+                Choose a format, then the supports your students need.
+              </p>
 
-          <div className="quiz-card">
-            <div className="wizard__viewport" style={vh ? { height: vh } : undefined}>
-              <div
-                className="wizard__track"
-                style={{ transform: `translateX(-${step * 100}%)` }}
+              <motion.div
+                className={ex.metricGroups}
+                initial="hidden"
+                animate="visible"
+                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07 } } }}
               >
-                {/* Step 1 — Format (Metrics-style pill grids) */}
-                <div className="wizard__panel" ref={(el) => (panelRefs.current[0] = el)}>
-                  <h2 className="quiz-q">What would you like to create?</h2>
-                  <p className="quiz-sub">
-                    Choose a format, then the supports your students need.
-                  </p>
-
-                  <Section label="Quick start">
-                    <div className="quiz-grid quiz-grid--2">
-                      {scenarios.map((s) => (
-                        <OptButton key={s.id} selected={false} onClick={() => loadScenario(s)}>
-                          {s.label}
-                        </OptButton>
-                      ))}
-                    </div>
-                  </Section>
-
-                  <Section label="What to make">
-                    <div className="quiz-grid quiz-grid--2">
-                      {outputTypes.map((o) => (
-                        <OptButton
-                          key={o.value}
-                          selected={input.outputType === o.value}
-                          onClick={() => {
-                            set("outputType", o.value);
-                            if (o.value === "assessment") setFormat("quiz");
-                            if (o.value === "feedback") setFormat("strengths");
-                          }}
-                        >
-                          {o.label}
-                        </OptButton>
-                      ))}
-                    </div>
-                  </Section>
-
-                  {showFormat && (
-                    <Section label="Format">
-                      <div className="quiz-grid quiz-grid--2">
-                        {formats.map((f) => (
-                          <OptButton
-                            key={f.value}
-                            selected={format === f.value}
-                            onClick={() => setFormat(f.value)}
-                          >
-                            {f.label}
-                          </OptButton>
-                        ))}
-                      </div>
-                    </Section>
-                  )}
-
-                  <Section label="Reading level">
-                    <div className="quiz-grid quiz-grid--2">
-                      {readingLevels.map((r) => (
-                        <OptButton
-                          key={r.value}
-                          selected={input.readingLevel === r.value}
-                          onClick={() => set("readingLevel", r.value)}
-                        >
-                          {r.label}
-                        </OptButton>
-                      ))}
-                    </div>
-                  </Section>
-
-                  <Section
-                    label="Learning needs"
-                    count={input.learningNeeds.length}
-                    action={
-                      <button type="button" className="quiz-selectall" onClick={toggleAllNeeds}>
-                        <Icon name="check" size="sm" />
-                        {allNeeds ? "Deselect All" : "Select All"}
-                      </button>
-                    }
-                  >
-                    <div className="quiz-grid">
-                      {learningNeedOptions.map((n) => (
-                        <OptButton
-                          key={n}
-                          selected={input.learningNeeds.includes(n)}
-                          onClick={() => toggleNeed(n)}
-                        >
-                          {n}
-                        </OptButton>
-                      ))}
-                    </div>
-                  </Section>
-
-                  <Section label="Additional supports">
-                    <div className="quiz-grid quiz-grid--2">
-                      <OptButton
-                        selected={input.neurodiverseSupport}
-                        onClick={() => set("neurodiverseSupport", !input.neurodiverseSupport)}
-                      >
-                        Neurodiverse supports
-                      </OptButton>
-                      <OptButton
-                        selected={input.lowTech}
-                        onClick={() => set("lowTech", !input.lowTech)}
-                      >
-                        Low-tech / offline
-                      </OptButton>
-                    </div>
-                  </Section>
-
-                  <Section label="Resource / tech level">
-                    <div className="quiz-grid">
-                      {resourceLevels.map((r) => (
-                        <OptButton
-                          key={r.value}
-                          selected={input.resourceLevel === r.value}
-                          onClick={() => set("resourceLevel", r.value)}
-                        >
-                          {r.label}
-                        </OptButton>
-                      ))}
-                    </div>
-                  </Section>
-                </div>
-
-                {/* Step 2 — Class (Location-style form) */}
-                <div className="wizard__panel" ref={(el) => (panelRefs.current[1] = el)}>
-                  <h2 className="quiz-q">What are you teaching?</h2>
-                  <p className="quiz-sub">Subject, course, grade, and the topic for this resource.</p>
-
-                  <div className="quiz-fields">
-                    <div className="quiz-field quiz-field--full">
-                      <label htmlFor="subject">{fieldMeta.subject.label}</label>
-                      <input
-                        id="subject"
-                        className="input"
-                        value={input.subject}
-                        placeholder={fieldMeta.subject.placeholder}
-                        onChange={(e) => set("subject", e.target.value)}
-                      />
-                    </div>
-                    <div className="quiz-field">
-                      <label htmlFor="course">{fieldMeta.course.label}</label>
-                      <input
-                        id="course"
-                        className="input"
-                        value={input.course}
-                        placeholder={fieldMeta.course.placeholder}
-                        onChange={(e) => set("course", e.target.value)}
-                      />
-                    </div>
-                    <div className="quiz-field">
-                      <label htmlFor="grade">{fieldMeta.grade.label}</label>
-                      <input
-                        id="grade"
-                        className="input"
-                        value={input.grade}
-                        placeholder={fieldMeta.grade.placeholder}
-                        onChange={(e) => set("grade", e.target.value)}
-                      />
-                    </div>
-                    <div className="quiz-field quiz-field--full">
-                      <label htmlFor="topic">{fieldMeta.topic.label}</label>
-                      <input
-                        id="topic"
-                        className="input"
-                        value={input.topic}
-                        placeholder={fieldMeta.topic.placeholder}
-                        onChange={(e) => set("topic", e.target.value)}
-                      />
-                    </div>
-                    <div className="quiz-field quiz-field--full">
-                      <label htmlFor="language">Language support</label>
-                      <input
-                        id="language"
-                        className="input"
-                        value={input.language}
-                        placeholder="e.g. English, English + Spanish"
-                        onChange={(e) => set("language", e.target.value)}
-                      />
-                    </div>
+                <MetricGroup label="Quick start">
+                  <div className={ex.choiceList}>
+                    {scenarios.map((s) => (
+                      <Choice key={s.id} selected={false} onClick={() => loadScenario(s)}>
+                        {s.label}
+                      </Choice>
+                    ))}
                   </div>
-                </div>
+                </MetricGroup>
 
-                {/* Step 3 — Context (form) */}
-                <div className="wizard__panel" ref={(el) => (panelRefs.current[2] = el)}>
-                  <h2 className="quiz-q">Who are your students?</h2>
-                  <p className="quiz-sub">
-                    Be specific. Treat what they bring as an asset (
-                    <Term term="CRP">CRP</Term>
-                    ).
-                  </p>
+                <MetricGroup label="What to make">
+                  <div className={ex.choiceList}>
+                    {outputTypes.map((o) => (
+                      <Choice
+                        key={o.value}
+                        selected={input.outputType === o.value}
+                        onClick={() => {
+                          set("outputType", o.value);
+                          if (o.value === "assessment") setFormat("quiz");
+                          if (o.value === "feedback") setFormat("strengths");
+                        }}
+                      >
+                        {o.label}
+                      </Choice>
+                    ))}
+                  </div>
+                </MetricGroup>
 
-                  {["studentInterests", "communityContext", "culturalAssets"].map((f) => (
-                    <div className="quiz-section" key={f}>
-                      <label className="quiz-fieldlabel" htmlFor={f}>
-                        {fieldMeta[f].label}
-                      </label>
-                      <textarea
-                        id={f}
-                        className="textarea"
-                        value={input[f]}
-                        placeholder={fieldMeta[f].placeholder}
-                        onChange={(e) => set(f, e.target.value)}
-                      />
-                      {fieldMeta[f].hint && <div className="quiz-hint">{fieldMeta[f].hint}</div>}
+                {showFormat && (
+                  <MetricGroup label="Format">
+                    <div className={ex.choiceList}>
+                      {formats.map((f) => (
+                        <Choice
+                          key={f.value}
+                          selected={format === f.value}
+                          onClick={() => setFormat(f.value)}
+                        >
+                          {f.label}
+                        </Choice>
+                      ))}
                     </div>
-                  ))}
+                  </MetricGroup>
+                )}
+
+                <MetricGroup label="Reading level">
+                  <div className={ex.choiceList}>
+                    {readingLevels.map((r) => (
+                      <Choice
+                        key={r.value}
+                        selected={input.readingLevel === r.value}
+                        onClick={() => set("readingLevel", r.value)}
+                      >
+                        {r.label}
+                      </Choice>
+                    ))}
+                  </div>
+                </MetricGroup>
+
+                <MetricGroup
+                  label="Learning needs"
+                  count={input.learningNeeds.length}
+                  action={
+                    <button
+                      type="button"
+                      className={`${ex.selectAllBtn} ${
+                        input.learningNeeds.length > 0 ? ex.selectAllBtnActive : ""
+                      }`}
+                      onClick={toggleAllNeeds}
+                    >
+                      <svg
+                        width="11"
+                        height="11"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      {allNeeds ? "Deselect All" : "Select All"}
+                    </button>
+                  }
+                >
+                  <div className={ex.choiceList}>
+                    {learningNeedOptions.map((n) => (
+                      <Choice
+                        key={n}
+                        selected={input.learningNeeds.includes(n)}
+                        onClick={() => toggleNeed(n)}
+                      >
+                        {n}
+                      </Choice>
+                    ))}
+                  </div>
+                </MetricGroup>
+
+                <MetricGroup label="Additional supports">
+                  <div className={ex.choiceList}>
+                    <Choice
+                      selected={input.neurodiverseSupport}
+                      onClick={() => set("neurodiverseSupport", !input.neurodiverseSupport)}
+                    >
+                      Neurodiverse supports
+                    </Choice>
+                    <Choice
+                      selected={input.lowTech}
+                      onClick={() => set("lowTech", !input.lowTech)}
+                    >
+                      Low-tech / offline
+                    </Choice>
+                  </div>
+                </MetricGroup>
+
+                <MetricGroup label="Resource / tech level">
+                  <div className={ex.choiceList}>
+                    {resourceLevels.map((r) => (
+                      <Choice
+                        key={r.value}
+                        selected={input.resourceLevel === r.value}
+                        onClick={() => set("resourceLevel", r.value)}
+                      >
+                        {r.label}
+                      </Choice>
+                    ))}
+                  </div>
+                </MetricGroup>
+              </motion.div>
+            </div>
+
+            <div className={ex.footerNav} style={{ justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className={`${ex.btnPrimary}${canLeaveFormat ? ` ${ex.btnPrimaryActive}` : ""}`}
+                disabled={!canLeaveFormat}
+                onClick={() => goToStep(2, -1)}
+              >
+                Next →
+              </button>
+            </div>
+
+            <p className={ex.excludedNote}>
+              Review AI output for accuracy and cultural fit before you use it in class. Never enter
+              anything that identifies a specific student.
+            </p>
+          </>
+        )}
+
+        {/* ── Step 2: Class (location-style form + comboboxes) ── */}
+        {step === 2 && (
+          <div className={ex.card}>
+            <p className={ex.question}>What are you teaching?</p>
+            <p className={ex.questionSub}>
+              Subject, course, grade, and the topic for this resource.
+            </p>
+
+            <div className={ex.fieldsGrid}>
+              <div className={ex.fieldsGridFull}>
+                <StubCombobox
+                  id="subject"
+                  label={fieldMeta.subject.label}
+                  value={input.subject}
+                  onChange={(v) => set("subject", v)}
+                  options={SUBJECT_OPTIONS}
+                  placeholder={fieldMeta.subject.placeholder}
+                  emptyNoun="subjects"
+                />
+              </div>
+              <StubCombobox
+                id="course"
+                label={fieldMeta.course.label}
+                value={input.course}
+                onChange={(v) => set("course", v)}
+                options={COURSE_OPTIONS}
+                placeholder={fieldMeta.course.placeholder}
+                emptyNoun="courses"
+              />
+              <StubCombobox
+                id="grade"
+                label={fieldMeta.grade.label}
+                value={input.grade}
+                onChange={(v) => set("grade", v)}
+                options={GRADE_OPTIONS}
+                placeholder={fieldMeta.grade.placeholder}
+                emptyNoun="grades"
+              />
+              <div className={ex.fieldsGridFull}>
+                <div className={ex.fieldGroup}>
+                  <label className={ex.fieldLabel} htmlFor="topic">
+                    {fieldMeta.topic.label}
+                  </label>
+                  <input
+                    id="topic"
+                    className={ex.comboboxInput}
+                    value={input.topic}
+                    placeholder={fieldMeta.topic.placeholder}
+                    onChange={(e) => set("topic", e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className={ex.fieldsGridFull}>
+                <div className={ex.fieldGroup}>
+                  <label className={ex.fieldLabel} htmlFor="language">
+                    Language support
+                  </label>
+                  <input
+                    id="language"
+                    className={ex.comboboxInput}
+                    value={input.language}
+                    placeholder="e.g. English, English + Spanish"
+                    onChange={(e) => set("language", e.target.value)}
+                  />
                 </div>
               </div>
             </div>
 
-            <div className="quiz-nav">
-              {step > 0 ? (
-                <button
-                  type="button"
-                  className="quiz-btn quiz-btn--ghost"
-                  onClick={() => setStep((s) => Math.max(0, s - 1))}
-                >
-                  <Icon name="arrowLeft" size="sm" /> Back
-                </button>
-              ) : (
-                <span />
-              )}
-              {step < 2 ? (
-                <button
-                  type="button"
-                  className="quiz-btn quiz-btn--primary"
-                  onClick={() => setStep((s) => Math.min(2, s + 1))}
-                >
-                  Next <Icon name="arrowRight" size="sm" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="quiz-btn quiz-btn--primary"
-                  onClick={run}
-                  disabled={loading || !canGenerate}
-                >
-                  {loading ? (
-                    "Generating…"
-                  ) : (
-                    <>
-                      Generate <Icon name="arrowRight" size="sm" />
-                    </>
-                  )}
-                </button>
-              )}
+            <div className={ex.footerNav} style={{ marginTop: "1.25rem", maxWidth: "none" }}>
+              <button type="button" className={ex.btnBack} onClick={() => goToStep(1, 1)}>
+                ← Back
+              </button>
+              <button
+                type="button"
+                className={`${ex.btnPrimary}${canLeaveClass ? ` ${ex.btnPrimaryActive}` : ""}`}
+                disabled={!canLeaveClass}
+                onClick={() => goToStep(3, -1)}
+              >
+                Next →
+              </button>
             </div>
           </div>
+        )}
 
-          <p className="quiz-note">
-            Review AI output for accuracy and cultural fit before you use it in class. Never enter
-            anything that identifies a specific student.
-          </p>
-        </div>
+        {/* ── Step 3: Context ── */}
+        {step === 3 && (
+          <div className={ex.card}>
+            <p className={ex.question}>Who are your students?</p>
+            <p className={ex.questionSub}>
+              Be specific. Treat what they bring as an asset (<Term term="CRP">CRP</Term>).
+            </p>
 
-        <div ref={outputRef} style={{ marginTop: 28, scrollMarginTop: 84 }}>
-          {loading && <SkeletonOutput />}
+            {["studentInterests", "communityContext", "culturalAssets"].map((f) => (
+              <div className={ex.fieldGroup} key={f}>
+                <label className={ex.fieldLabel} htmlFor={f}>
+                  {fieldMeta[f].label}
+                </label>
+                <textarea
+                  id={f}
+                  className={ex.textArea}
+                  value={input[f]}
+                  placeholder={fieldMeta[f].placeholder}
+                  onChange={(e) => set(f, e.target.value)}
+                />
+                {fieldMeta[f].hint && <div className={ex.fieldHint}>{fieldMeta[f].hint}</div>}
+              </div>
+            ))}
 
-          {!loading && output && (
-            <div className="stack">
-              <div className="card no-print">
-                <div className="row row-wrap between" style={{ gap: 10 }}>
-                  <Badge variant="green">
-                    <Icon name="check" size="sm" /> Ready to review
-                  </Badge>
-                  <div className="row row-wrap" style={{ gap: 6 }}>
+            <div className={ex.footerNav} style={{ marginTop: "1.25rem", maxWidth: "none" }}>
+              <button type="button" className={ex.btnBack} onClick={() => goToStep(2, 1)}>
+                ← Back
+              </button>
+              <button
+                type="button"
+                className={`${ex.btnPrimary}${canGenerate ? ` ${ex.btnPrimaryActive}` : ""}`}
+                disabled={loading || !canGenerate}
+                onClick={run}
+              >
+                {loading ? <span className={ex.spinner} /> : "Generate →"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 4: Results ── */}
+        {step === 4 && (
+          <>
+            <div className={ex.card}>
+              <p className={ex.question}>Draft for {resultsTitle}</p>
+              <div className={ex.footerNav} style={{ marginTop: "1.5rem", maxWidth: "none" }}>
+                <button type="button" className={ex.btnBack} onClick={() => goToStep(3, 1)}>
+                  ← Back
+                </button>
+                <button type="button" className={ex.btnBack} disabled={loading} onClick={restart}>
+                  ↺ New Builder
+                </button>
+              </div>
+              {!loading && output && (
+                <div className={ex.resultActions}>
+                  <button
+                    type="button"
+                    className={`${ex.resultActionBtn}${reviewOpen ? ` ${ex.resultActionBtnActive}` : ""}`}
+                    onClick={doReview}
+                    aria-expanded={reviewOpen}
+                  >
+                    <Icon name="shieldCheck" size="sm" />{" "}
+                    {reviewOpen ? "Hide review" : "Review for bias & fit"}
+                  </button>
+                  <button type="button" className={ex.resultActionBtn} onClick={doCopy}>
+                    <Icon name="copy" size="sm" /> Copy
+                  </button>
+                  <button type="button" className={ex.resultActionBtn} onClick={doMarkdown}>
+                    <Icon name="download" size="sm" /> Markdown
+                  </button>
+                  <button type="button" className={ex.resultActionBtn} onClick={doText}>
+                    <Icon name="fileText" size="sm" /> Text
+                  </button>
+                  <button type="button" className={ex.resultActionBtn} onClick={doPrint}>
+                    <Icon name="printer" size="sm" /> Print
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className={ex.srOnly}
+            >
+              {loading
+                ? "Generating your draft…"
+                : output
+                  ? "Draft ready."
+                  : ""}
+            </div>
+
+            <section className={ex.resultsSection} aria-label="Generated draft">
+              <h2 className={ex.resultsTitle}>Results</h2>
+
+              {loading && (
+                <>
+                  <motion.div
+                    className={ex.typingIndicator}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <span className={ex.typingDots} aria-hidden="true">
+                      <i />
+                      <i />
+                      <i />
+                    </span>
+                    <span>Drafting your {labelFor(input.outputType) || "resource"}…</span>
+                  </motion.div>
+                  <div className={ex.resultStack} aria-hidden="true">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={ex.skeletonCard}
+                        style={{ animationDelay: `${i * 90}ms` }}
+                      >
+                        <div className={`${ex.skelLine} ${ex.skelLabel}`} />
+                        <div className={`${ex.skelLine} ${ex.skelHeading}`} />
+                        <div className={ex.skelLine} />
+                        <div className={ex.skelLine} style={{ width: "92%" }} />
+                        <div className={ex.skelLine} style={{ width: "78%" }} />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {!loading && output && (
+                <>
+                  {/* Trend-expand adaptation: bias/fit review accordion */}
+                  <div
+                    className={ex.statCard}
+                    style={{ marginBottom: "1rem", animationDelay: "0ms" }}
+                  >
+                    <div className={ex.statMeta}>
+                      <span className={ex.statLabel}>Bias &amp; fit review</span>
+                    </div>
                     <button
-                      className="btn btn-ghost btn-sm"
+                      type="button"
+                      className={`${ex.statChartBtn}${reviewOpen ? ` ${ex.statChartBtnActive}` : ""}`}
                       onClick={doReview}
                       aria-expanded={reviewOpen}
                     >
-                      <Icon name="shieldCheck" size="sm" />{" "}
-                      {reviewOpen ? "Hide review" : "Review for bias & fit"}
+                      {reviewOpen ? "↑ Hide Review" : "↓ Show Review"}
                     </button>
-                    <button className="btn btn-subtle btn-sm" onClick={doCopy}>
-                      <Icon name="copy" size="sm" /> Copy
-                    </button>
-                    <button className="btn btn-subtle btn-sm" onClick={doMarkdown}>
-                      <Icon name="download" size="sm" /> Markdown
-                    </button>
-                    <button className="btn btn-subtle btn-sm" onClick={doText}>
-                      <Icon name="fileText" size="sm" /> Text
-                    </button>
-                    <button className="btn btn-subtle btn-sm" onClick={doPrint}>
-                      <Icon name="printer" size="sm" /> Print
-                    </button>
-                  </div>
-                </div>
-
-                <div className={`collapse${reviewOpen ? " is-open" : ""}`}>
-                  <div className="collapse__inner">
-                    {review && (
-                      <div style={{ paddingTop: 16 }}>
-                        <div className="row" style={{ marginBottom: 8 }}>
-                          <Badge variant={passCount === review.length ? "green" : "warn"}>
-                            {passCount} of {review.length} checks passed
-                          </Badge>
-                        </div>
-                        {review.map((r, i) => (
-                          <div className={`check-item${r.pass ? " is-pass" : ""}`} key={i}>
-                            <span className={`check-mark${r.pass ? "" : " check-mark--flag"}`}>
-                              <Icon name={r.pass ? "check" : "alert"} size="sm" />
-                            </span>
-                            <div>
-                              <div className="small" style={{ fontWeight: 600 }}>
-                                {r.q}
-                              </div>
-                              <div className="tiny muted">{r.note}</div>
+                    <div className={`${ex.chartCollapse} ${reviewOpen ? ex.chartCollapseOpen : ""}`}>
+                      <div className={ex.chartCollapseInner}>
+                        {review && (
+                          <div className={ex.inlineChart}>
+                            <p className={ex.trendSummary}>
+                              {passCount} of {review.length} checks passed
+                            </p>
+                            <div className={ex.checkList}>
+                              {review.map((r, i) => (
+                                <div className={ex.checkRow} key={i}>
+                                  <span
+                                    className={`${ex.checkMark}${r.pass ? "" : ` ${ex.checkMarkFail}`}`}
+                                    aria-hidden
+                                  >
+                                    {r.pass ? "✓" : "!"}
+                                  </span>
+                                  <div>
+                                    <div className={ex.checkTitle}>{r.q}</div>
+                                    <div className={ex.checkNote}>{r.note}</div>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
-                        ))}
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <DocView key={genId} output={output} progressive />
+                  <div className={ex.resultStack} key={genId}>
+                    <div
+                      className={ex.statCard}
+                      style={{ animationDelay: "40ms" }}
+                    >
+                      <div className={ex.statMeta}>
+                        <span className={ex.statLabel}>Draft</span>
+                      </div>
+                      <div className={ex.statValue} style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)" }}>
+                        {output.title}
+                      </div>
+                      {output.meta?.length > 0 && (
+                        <div className={ex.contextBadgeStrip} style={{ marginTop: "0.75rem" }}>
+                          {output.meta.map((m, i) => (
+                            <span key={i} className={ex.contextBadge}>
+                              {m}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
 
-              <div className="card no-print">
-                <strong className="small">Revise this output</strong>
-                <p className="tiny muted" style={{ margin: "4px 0 12px" }}>
-                  Guided edits you apply with one click, so you never start the prompt over.
-                </p>
-                <div className="chips">
-                  {revisionActions.map((a) => (
-                    <button key={a.id} className="chip" onClick={() => revise(a.id)}>
-                      <Icon name={REVISION_ICONS[a.id]} size="sm" /> {a.label}
-                    </button>
-                  ))}
-                </div>
+                    {output.sections.map((s, i) => {
+                      const isList = Array.isArray(s.body);
+                      return (
+                        <div
+                          key={i}
+                          className={ex.statCard}
+                          style={{
+                            animationDelay: `${(i + 2) * 70}ms`,
+                            opacity: s._revised ? 1 : undefined,
+                            boxShadow: s._revised ? "var(--result-glow)" : undefined,
+                          }}
+                        >
+                          <div className={ex.statMeta}>
+                            <span className={ex.statLabel}>{s.label}</span>
+                          </div>
+                          <div className={ex.docSectionBody}>
+                            {isList ? (
+                              <ul>
+                                {s.body.map((b, j) => (
+                                  <li key={j}>{b}</li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p>{s.body}</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </section>
+
+            {/* Compare adaptation: revise panel */}
+            {!loading && output && (
+              <div className={ex.compareSection}>
+                <AnimatePresence mode="wait" initial={false}>
+                  {!showRevise ? (
+                    <motion.button
+                      key="revise-toggle"
+                      type="button"
+                      className={ex.btnCompare}
+                      onClick={() => setShowRevise(true)}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.18 }}
+                    >
+                      ＋ Revise This Draft
+                    </motion.button>
+                  ) : (
+                    <motion.div
+                      key="revise-card"
+                      style={{ overflow: "hidden" }}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{
+                        height: { type: "spring", stiffness: 260, damping: 30 },
+                        opacity: { duration: 0.25 },
+                      }}
+                    >
+                      <div className={ex.compareCard}>
+                        <p className={ex.compareTitle}>Revise with</p>
+                        <p className={ex.fieldHint} style={{ marginTop: 0, marginBottom: "0.85rem" }}>
+                          Guided edits you apply with one click — no need to restart the prompt.
+                        </p>
+                        <div className={ex.reviseChoiceList}>
+                          {revisionActions.map((a) => (
+                            <Choice key={a.id} selected={false} onClick={() => revise(a.id)}>
+                              <Icon name={REVISION_ICONS[a.id]} size="sm" /> {a.label}
+                            </Choice>
+                          ))}
+                        </div>
+                        <div className={ex.compareActions}>
+                          <button
+                            type="button"
+                            className={ex.btnBack}
+                            onClick={() => setShowRevise(false)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            </div>
-          )}
-        </div>
-      </div>
+            )}
+
+            {!loading && output && (
+              <div className={ex.bottomActions}>
+                <button type="button" className={ex.btnStartNew} onClick={restart}>
+                  ↺ Start a New Builder
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </motion.div>
     </div>
   );
-}
-
-function SkeletonOutput() {
-  return (
-    <div className="out-grid" aria-hidden="true">
-      <div className="skel-card out-card--header">
-        <div className="skel skel-title" />
-        <div className="skel-chips">
-          <div className="skel skel-chip" />
-          <div className="skel skel-chip" style={{ width: 96 }} />
-        </div>
-      </div>
-      {[
-        [92, 74],
-        [96, 88, 60],
-        [90, 80],
-        [94, 70],
-      ].map((lines, i) => (
-        <div className="skel-card" key={i}>
-          <div className="skel skel-label" />
-          {lines.map((w, j) => (
-            <div className="skel skel-line" key={j} style={{ width: `${w}%` }} />
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function labelFor(t) {
-  return (
-    { lesson: "Lesson Plan", activity: "Activity", assessment: "Assessment", feedback: "Feedback" }[
-      t
-    ] || ""
-  );
-}
-function fileName(output, ext) {
-  const base = (output.title || "output")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 48);
-  return `${base || "lumen-output"}.${ext}`;
 }

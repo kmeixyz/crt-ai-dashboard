@@ -1,0 +1,247 @@
+/* styles/globals.css — light is default; data-theme="dark" opts into dark mode. */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Default = light */
+:root {
+  color-scheme: light;
+  --bg:            #f7f7f5;
+  --surface:       #ffffff;
+  --surface-2:     #eef3fa;
+  --border:        #dde3ec;
+  --border-hover:  #b9c6d9;
+  --accent:        #1a4480;
+  --accent-2:      #2378c3;
+  --accent-glow:   rgba(26, 68, 128, 0.12);
+  --green:         #1a4480;
+  --muted:         #4d5768;
+  --text:          #1a1a1a;
+  --text-dim:      #32404f;
+  --error:         #b91c1c;
+  --title-gradient: none;
+  --orb-gradient: none;
+  --badge-bg:      #eef3fa;
+  --badge-border:  #c9d8ec;
+  --select-option-bg: #ffffff;
+  --result-value-shadow: none;
+  --chart-surface:   #ffffff;
+  --chart-border:    #dde3ec;
+  --chart-grid:      #e6ecf3;
+  --chart-axis:      #b9c6d9;
+  --chart-tick:      #4d5768;
+  --chart-tooltip-bg: #ffffff;
+  --chart-tooltip-border: #dde3ec;
+  --chart-muted:     #4d5768;
+  --chart-faint:     #69748a;
+  --chart-source:    #69748a;
+  --chart-empty:     #4d5768;
+  --result-glow:     0 1px 2px rgba(20, 30, 50, 0.04);
+  --chart-card-glow: 0 1px 2px rgba(20, 30, 50, 0.04);
+  --metric-label-glow: none;
+  --scrollbar-reveal: rgba(60, 70, 90, 0.42);
+  --font-head:  "Merriweather", Georgia, "Times New Roman", serif;
+  --font-mono:  "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg:            #f7f7f5;
+  --surface:       #ffffff;
+  --surface-2:     #eef3fa;
+  --border:        #dde3ec;
+  --border-hover:  #b9c6d9;
+  --accent:        #1a4480;
+  --accent-2:      #2378c3;
+  --accent-glow:   rgba(26, 68, 128, 0.12);
+  --green:         #1a4480;
+  --muted:         #4d5768;
+  --text:          #1a1a1a;
+  --text-dim:      #32404f;
+  --error:         #b91c1c;
+  --title-gradient: none;
+  --orb-gradient: none;
+  --badge-bg:      #eef3fa;
+  --badge-border:  #c9d8ec;
+  --select-option-bg: #ffffff;
+  --result-value-shadow: none;
+  --chart-surface:   #ffffff;
+  --chart-border:    #dde3ec;
+  --chart-grid:      #e6ecf3;
+  --chart-axis:      #b9c6d9;
+  --chart-tick:      #4d5768;
+  --chart-tooltip-bg: #ffffff;
+  --chart-tooltip-border: #dde3ec;
+  --chart-muted:     #4d5768;
+  --chart-faint:     #69748a;
+  --chart-source:    #69748a;
+  --chart-empty:     #4d5768;
+  --result-glow:     0 1px 2px rgba(20, 30, 50, 0.04);
+  --chart-card-glow: 0 1px 2px rgba(20, 30, 50, 0.04);
+  --metric-label-glow: none;
+  --scrollbar-reveal: rgba(60, 70, 90, 0.42);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg:            #11151c;
+  --surface:       #1a212c;
+  --surface-2:     #232c3a;
+  --border:        rgba(180, 200, 224, 0.18);
+  --border-hover:  rgba(180, 200, 224, 0.30);
+  --accent:        #7aa7d9;
+  --accent-2:      #5b8ec5;
+  --accent-glow:   rgba(122, 167, 217, 0.22);
+  --green:         #7aa7d9;
+  --muted:         #c4d0df;
+  --text:          #eef3fa;
+  --text-dim:      #dce5f0;
+  --error:         #fca5a5;
+  --title-gradient: none;
+  --orb-gradient: none;
+  --badge-bg:      rgba(122, 167, 217, 0.12);
+  --badge-border:  rgba(122, 167, 217, 0.32);
+  --select-option-bg: #1a212c;
+  --result-value-shadow: none;
+  --chart-surface:   #1a212c;
+  --chart-border:    rgba(180, 200, 224, 0.14);
+  --chart-grid:      rgba(180, 200, 224, 0.12);
+  --chart-axis:      rgba(180, 200, 224, 0.22);
+  --chart-tick:      #a6b3c4;
+  --chart-tooltip-bg: #232c3a;
+  --chart-tooltip-border: rgba(180, 200, 224, 0.22);
+  --chart-muted:     #a6b3c4;
+  --chart-faint:     #98a4b6;
+  --chart-source:    #98a4b6;
+  --chart-empty:     #98a4b6;
+  --result-glow:     0 1px 2px rgba(0, 0, 0, 0.3);
+  --chart-card-glow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --metric-label-glow: none;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 0.85; }
+}
+
+@keyframes cardReveal {
+  from { opacity: 0; transform: translateY(22px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Global focus ring — visible keyboard navigation for all interactive elements ── */
+:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px rgba(35, 120, 195, 0.18);
+}
+
+/* Remove default focus outline only when :focus-visible is supported */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+html {
+  background-color: var(--bg);
+  color: var(--text);
+  min-height: 100%;
+  font-family: var(--font-mono);
+  /* Reserve gutter so layout width stays stable when the native scrollbar appears */
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+body {
+  background-color: transparent;
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-head);
+}
+
+/* Scrollbar: invisible at rest, visible while / just after scrolling (see ScrollbarReveal) */
+html.scrollbar-reveal {
+  scrollbar-color: var(--scrollbar-reveal) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.35s ease;
+}
+
+html.scrollbar-reveal::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-reveal);
+}
+
+/* ── A9: theme toggle circular reveal (View Transitions API) ──────────────────
+   When setTheme runs inside document.startViewTransition, the old and new
+   document snapshots crossfade. We override the new snapshot to clip-reveal
+   from the toggle button's position (set via --vt-x / --vt-y on :root). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 2;
+}
+html.theme-reveal::view-transition-new(root) {
+  animation: themeCircleIn 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes themeCircleIn {
+  from {
+    clip-path: circle(0% at var(--vt-x, 50%) var(--vt-y, 0%));
+  }
+  to {
+    clip-path: circle(150% at var(--vt-x, 50%) var(--vt-y, 0%));
+  }
+}
+
+/* ── E1: respect prefers-reduced-motion everywhere ───────────────────────────
+   Neutralizes CSS animations/transitions for users who opt out. Framer Motion
+   is handled separately via <MotionConfig reducedMotion="user"> in _app, plus
+   explicit useReducedMotion checks in the imperative count-up / line-draw. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Skip the circular theme reveal entirely. */
+  html.theme-reveal::view-transition-new(root),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}

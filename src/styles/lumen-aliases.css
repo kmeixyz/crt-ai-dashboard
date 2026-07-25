@@ -1,0 +1,31 @@
+/* Bridge CensusBot tokens → existing Lumen --c-* usages in app.css / theme leftovers */
+:root,
+html[data-theme="light"],
+html[data-theme="dark"] {
+  --font-sans: var(--font-mono);
+  --font-serif: var(--font-head);
+  --c-bg: var(--bg);
+  --c-surface: var(--surface);
+  --c-surface-alt: var(--surface-2);
+  --c-surface-2: var(--surface-2);
+  --c-ink: var(--text);
+  --c-ink-soft: var(--muted);
+  --c-ink-faint: var(--muted);
+  --c-line: var(--border);
+  --c-line-strong: var(--border-hover);
+  --c-brand: var(--accent);
+  --c-primary: var(--accent);
+  --c-primary-ink: #ffffff;
+  --c-primary-soft: var(--badge-bg);
+  --c-primary-hover: var(--accent-2);
+  --c-quiz-accent: var(--accent);
+  --c-quiz-on-accent: #ffffff;
+  --c-quiz-selected-bg: var(--surface-2);
+  --c-quiz-selected-ink: var(--text);
+  --c-option-bg: var(--surface);
+  --c-option-bg-hover: var(--surface-2);
+  --c-option-ink: var(--text-dim);
+  --c-chip-bg: var(--badge-bg);
+  --c-chip-ink: var(--accent);
+  --c-chip-border: var(--badge-border);
+}

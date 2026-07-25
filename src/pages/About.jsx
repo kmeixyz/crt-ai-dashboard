@@ -1,203 +1,307 @@
-import React, { useState } from "react";
-import Icon from "../components/Icon.jsx";
-import { glossary } from "../data/glossary.js";
-import { toolScan, marketGaps } from "../data/toolScan.js";
-import { personas } from "../data/personas.js";
-import { promptLibrary, systemPrompt } from "../data/promptLibrary.js";
+import React, { useEffect, useRef, useState } from "react";
+import landing from "../styles/Landing.module.css";
 
-const SECTIONS = [
+const NAV_SECTIONS = [
   { id: "overview", label: "Overview" },
-  { id: "frameworks", label: "Frameworks" },
-  { id: "teachers", label: "Teachers" },
-  { id: "prompts", label: "Prompts" },
-  { id: "compare", label: "How it compares" },
+  { id: "how-its-built", label: "Tech Stack" },
+  { id: "the-team", label: "Our Team" },
 ];
 
+const GLANCE = [
+  {
+    label: "Built for",
+    value: "Chicago Public Schools",
+    href: "https://www.cps.edu",
+  },
+  {
+    label: "Built at",
+    value: "Discovery Partners Institute",
+    href: "https://dpi.illinois.edu",
+  },
+  {
+    label: "Contact",
+    value: "rukminia@uillinois.edu",
+    href: "mailto:rukminia@uillinois.edu",
+  },
+];
+
+const OVERVIEW_LEAD =
+  "Create STEM lessons, activities, assessments, and feedback tailored to your class.";
+
+const OVERVIEW_PARAS = [
+  "Lumen is a three-step resource builder for high school STEM teachers. Choose a resource " +
+    "type, describe your class, and add context (community, reading level, tech access, " +
+    "language, and supports). It generates a structured draft with built-in cultural " +
+    "relevance and accessibility. The demo uses a mock generator (no API key required). " +
+    "Review all output before using it, and never enter student-identifying information.",
+];
+
+const TECH_TEXT =
+  "Built with React, Vite, and CSS Modules. Uses prompt templates with a deterministic mock " +
+  "engine for offline demos, with optional integration via callLLM(). Drafts can be revised, " +
+  "reviewed, copied, downloaded, or printed.";
+
+const STEPS = [
+  {
+    num: "01",
+    title: "Guided Builder",
+    desc: "Set the resource, class, and context.",
+  },
+  {
+    num: "02",
+    title: "Built-In Review",
+    desc: "Flags bias, accessibility gaps, and stereotype risk.",
+  },
+  {
+    num: "03",
+    title: "One-Click Revisions",
+    desc: "Adapt drafts for access, language, tech, or learning needs.",
+  },
+];
+
+const BUILT_ROWS = [
+  {
+    label: "Frontend",
+    tags: ["React", "Vite", "CSS Modules", "Accessibility"],
+  },
+  {
+    label: "Method",
+    tags: ["CRP", "CSP", "UDL", "Differentiation"],
+  },
+  {
+    label: "AI",
+    tags: ["Mock engine", "Prompt templates", "Bias review"],
+  },
+];
+
+const TEAM = [
+  { name: "Rukmini Avadhanam", role: "Project Host", wide: true },
+  { name: "Kevin Mei", role: "Project Team" },
+  { name: "Brynn Walker", role: "Project Team" },
+];
+
+function initials(name) {
+  return name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
 export default function About() {
-  const [section, setSection] = useState("overview");
+  const [activeSection, setActiveSection] = useState("overview");
+  // Height of the site's sticky top nav, so the mobile sticky header (title +
+  // section nav) docks directly beneath it instead of sliding underneath.
+  const [navHeight, setNavHeight] = useState(0);
+  // Ignore scroll-spy briefly after a sidebar click so hash/programmatic
+  // jumps don't fight the intended active section (esp. Tech Stack near the
+  // bottom of a short page).
+  const ignoreSpyUntil = useRef(0);
+
+  useEffect(() => {
+    const measure = () => {
+      const nav = document.querySelector("nav");
+      if (nav) setNavHeight(nav.getBoundingClientRect().height);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  useEffect(() => {
+    // Instant hash jumps on this page — global theme.css uses smooth scroll,
+    // which animates through sections and makes the spy thrash the sidebar.
+    // Use a dedicated class (not "about-page") so leftover app.css page-shell
+    // padding on `.about-page` does not apply to <html>.
+    const root = document.documentElement;
+    root.classList.add("about-instant-scroll");
+
+    const sections = NAV_SECTIONS.map((section) => document.getElementById(section.id)).filter(
+      Boolean
+    );
+
+    const onScroll = () => {
+      if (performance.now() < ignoreSpyUntil.current) return;
+
+      // Active section = the one occupying the most of the viewport. This
+      // handles short final sections that sit at the bottom of the page (e.g.
+      // Tech Stack): the old "30%-line + force-last-when-near-bottom" rule
+      // snapped the highlight to Our Team as soon as a sidebar click scrolled
+      // near max scroll, so Tech Stack could never stay lit. On ties the
+      // earlier section wins, keeping Overview active at the very top.
+      const viewport = window.innerHeight;
+      let current = sections[0]?.id;
+      let maxVisible = -1;
+      for (const el of sections) {
+        const rect = el.getBoundingClientRect();
+        const visible = Math.min(rect.bottom, viewport) - Math.max(rect.top, 0);
+        if (visible > maxVisible) {
+          maxVisible = visible;
+          current = el.id;
+        }
+      }
+
+      // The page is short enough that the final section (Our Team) can't scroll
+      // to the top, so it never wins "most-visible". Activate it only at the
+      // very bottom of the page (2px tolerance) — tight enough that it never
+      // steals the highlight from Tech Stack mid-scroll.
+      const atBottom =
+        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+      if (atBottom) {
+        current = sections[sections.length - 1]?.id ?? current;
+      }
+
+      if (current) {
+        setActiveSection((prev) => (prev === current ? prev : current));
+      }
+    };
+
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      root.classList.remove("about-instant-scroll");
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+
+  const goToSection = (event, id) => {
+    event.preventDefault();
+    const el = document.getElementById(id);
+    if (!el) return;
+    ignoreSpyUntil.current = performance.now() + 400;
+    setActiveSection(id);
+    // Instant jump; scroll-margin-top on sections clears the sticky nav.
+    el.scrollIntoView({ behavior: "auto", block: "start" });
+    if (history.replaceState) {
+      history.replaceState(null, "", `#${id}`);
+    } else {
+      window.location.hash = id;
+    }
+  };
 
   return (
-    <div className="page about-page">
-      <div className="container about-layout">
-        <aside className="about-side">
-          <h2 className="about-side__title">About Lumen</h2>
-          <nav className="about-side__nav" aria-label="About sections">
-            {SECTIONS.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                className={`about-side__link${section === s.id ? " is-active" : ""}`}
-                onClick={() => setSection(s.id)}
-              >
-                {s.label}
-              </button>
-            ))}
-          </nav>
-          <div className="about-meta">
-            <div className="about-meta__block">
-              <div className="about-meta__label">Built for</div>
-              <div className="about-meta__value">High school STEM teachers</div>
-            </div>
-            <div className="about-meta__block">
-              <div className="about-meta__label">Grounded in</div>
-              <div className="about-meta__value">CRP, CSP, and UDL</div>
-            </div>
-            <div className="about-meta__block">
-              <div className="about-meta__label">Note</div>
-              <div className="about-meta__value">AI drafts only. Always review before class.</div>
-            </div>
+    <div
+      className={landing.aboutLayout}
+      style={{ "--about-sticky-top": `${navHeight}px` }}
+    >
+      <aside className={landing.aboutSidebar}>
+        <div className={landing.aboutSidebarInner}>
+          <div className={landing.aboutSidebarHeader}>
+            <h1 className={landing.aboutSidebarTitle}>About Lumen</h1>
+
+            <nav className={landing.aboutNav} aria-label="About sections">
+              {NAV_SECTIONS.map((section) => (
+                <a
+                  key={section.id}
+                  href={`#${section.id}`}
+                  onClick={(event) => goToSection(event, section.id)}
+                  className={`${landing.aboutNavLink} ${
+                    activeSection === section.id ? landing.aboutNavLinkActive : ""
+                  }`}
+                >
+                  {section.label}
+                </a>
+              ))}
+            </nav>
           </div>
-        </aside>
 
-        <div className="about-main">
-          {section === "overview" && (
-            <>
-              <h1 className="about-h1">Overview</h1>
-              <p className="about-lead">Build STEM materials around the students you actually teach.</p>
-              <p className="about-body">
-                Lumen is a drafting assistant for high school STEM teachers. You describe your class,
-                community, and access needs once. It returns a structured lesson, activity,
-                assessment, or feedback note that starts from that context.
-              </p>
-              <div className="about-features">
-                <div className="about-feature">
-                  <h3>Guided builder</h3>
-                  <p>Pick a format, enter class details, add community context, then generate.</p>
+          <div className={landing.glanceBlock}>
+            <dl className={landing.glanceList}>
+              {GLANCE.map((item) => (
+                <div key={item.label} className={landing.glanceItem}>
+                  <dt className={landing.glanceItemLabel}>{item.label}</dt>
+                  <dd className={landing.glanceItemValue}>
+                    {item.href ? (
+                      <a
+                        href={item.href}
+                        className={landing.glanceLink}
+                        {...(item.href.startsWith("http")
+                          ? { target: "_blank", rel: "noopener noreferrer" }
+                          : {})}
+                      >
+                        {item.value}
+                      </a>
+                    ) : (
+                      item.value
+                    )}
+                  </dd>
                 </div>
-                <div className="about-feature">
-                  <h3>Built-in review</h3>
-                  <p>Check the draft against a short CRP and UDL list before you use it.</p>
-                </div>
-                <div className="about-feature">
-                  <h3>One-click revisions</h3>
-                  <p>Make it more accessible, low-tech, multilingual, or more local without starting over.</p>
-                </div>
-              </div>
-
-              <h2 className="about-h2">How it works</h2>
-              <p className="about-body">
-                The dashboard uses a mock AI engine by default, so demos run with no API key. The
-                same prompt templates can later connect to a live model.
-              </p>
-              <div className="about-tags">
-                <div className="about-tags__row">
-                  <span className="about-tags__label">Frontend</span>
-                  <span className="about-tag">React</span>
-                  <span className="about-tag">Vite</span>
-                  <span className="about-tag">CSS variables</span>
-                </div>
-                <div className="about-tags__row">
-                  <span className="about-tags__label">Method</span>
-                  <span className="about-tag">CRP</span>
-                  <span className="about-tag">CSP</span>
-                  <span className="about-tag">UDL</span>
-                </div>
-                <div className="about-tags__row">
-                  <span className="about-tags__label">AI</span>
-                  <span className="about-tag">Mock engine</span>
-                  <span className="about-tag">Prompt templates</span>
-                </div>
-              </div>
-            </>
-          )}
-
-          {section === "frameworks" && (
-            <>
-              <h1 className="about-h1">Frameworks</h1>
-              <p className="about-body">
-                These are the ideas behind every draft Lumen writes.
-              </p>
-              <div className="about-list">
-                {glossary.map((g) => (
-                  <div className="about-list__item" key={g.term}>
-                    <h3>{g.term}</h3>
-                    <p className="about-list__short">{g.short}</p>
-                    <p className="about-body">{g.definition}</p>
-                    <p className="about-inproduct">
-                      <strong>In the product:</strong> {g.inProduct}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {section === "teachers" && (
-            <>
-              <h1 className="about-h1">Teachers</h1>
-              <p className="about-body">
-                Three teacher profiles shaped the product: urban public school, rural low-resource,
-                and AP / magnet.
-              </p>
-              <div className="about-team">
-                {personas.map((p) => (
-                  <div className="about-team__card" key={p.id}>
-                    <span className="about-team__avatar" style={{ background: p.color }}>
-                      {p.initials}
-                    </span>
-                    <div>
-                      <div className="about-team__name">{p.name}</div>
-                      <div className="about-team__role">{p.role}</div>
-                      <p className="about-body" style={{ marginTop: 8, marginBottom: 0 }}>
-                        {p.context}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {section === "prompts" && (
-            <>
-              <h1 className="about-h1">Prompts</h1>
-              <p className="about-body">
-                Every generator runs on a small set of structured templates. The rules below shape
-                every draft.
-              </p>
-              <p className="about-body" style={{ whiteSpace: "pre-wrap", fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)", background: "var(--c-surface-alt)", padding: 16, borderRadius: 12 }}>
-                {systemPrompt}
-              </p>
-              <div className="about-tags" style={{ marginTop: 24 }}>
-                {Object.values(promptLibrary).map((d) => (
-                  <div className="about-tags__row" key={d.domain}>
-                    <span className="about-tags__label">{d.domain}</span>
-                    {d.templates.map((t) => (
-                      <span className="about-tag" key={t.id}>{t.name}</span>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {section === "compare" && (
-            <>
-              <h1 className="about-h1">How it compares</h1>
-              <p className="about-body">
-                Other teacher AI tools are useful. Most still treat culture as optional free text
-                and skip a built-in bias review.
-              </p>
-              <div className="about-list">
-                {marketGaps.map((g) => (
-                  <div className="about-list__item" key={g.title}>
-                    <h3>{g.title}</h3>
-                    <p className="about-body">{g.detail}</p>
-                  </div>
-                ))}
-              </div>
-              <h2 className="about-h2">Tools we looked at</h2>
-              <div className="about-tags">
-                {toolScan.map((t) => (
-                  <div className="about-tags__row" key={t.tool}>
-                    <span className="about-tags__label">{t.tool}</span>
-                    <span className="about-tag">{t.focus}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+              ))}
+            </dl>
+          </div>
         </div>
+      </aside>
+
+      <div className={landing.aboutContent}>
+        <section id="overview" className={landing.aboutSection}>
+          <h2 className={landing.aboutSectionTitle}>Overview</h2>
+          <p className={landing.aboutLead}>{OVERVIEW_LEAD}</p>
+          {OVERVIEW_PARAS.map((para, i) => (
+            <p
+              key={i}
+              className={`${landing.aboutText} ${i > 0 ? landing.aboutTextSpaced : ""}`}
+            >
+              {para}
+            </p>
+          ))}
+          <ol className={landing.stepList}>
+            {STEPS.map((step) => (
+              <li key={step.num} className={landing.stepItem}>
+                <span className={landing.stepBody}>
+                  <span className={landing.stepTitle}>{step.title}</span>
+                  <span className={landing.stepDesc}>{step.desc}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <hr className={landing.aboutDivider} />
+
+        <section id="how-its-built" className={landing.aboutSection}>
+          <h2 className={landing.aboutSectionTitle}>Tech Stack</h2>
+          <p className={landing.aboutText}>{TECH_TEXT}</p>
+          <div className={landing.builtRows}>
+            {BUILT_ROWS.map((row) => (
+              <div key={row.label} className={landing.builtRow}>
+                <span className={landing.builtRowLabel}>{row.label}</span>
+                <div className={landing.tagGroup}>
+                  {row.tags.map((tag) => (
+                    <span key={tag} className={landing.tag}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <hr className={landing.aboutDivider} />
+
+        <section id="the-team" className={landing.aboutSection}>
+          <h2 className={landing.aboutSectionTitle}>Our Team</h2>
+          <div className={landing.teamGrid}>
+            {TEAM.map((member) => (
+              <div
+                key={member.name}
+                className={landing.teamCard}
+                style={member.wide ? { gridColumn: "1 / -1" } : undefined}
+              >
+                <span className={landing.teamAvatar} aria-hidden>
+                  {initials(member.name)}
+                </span>
+                <span className={landing.teamInfo}>
+                  <span className={landing.teamName}>{member.name}</span>
+                  <span className={landing.teamRole}>{member.role}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );

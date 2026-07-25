@@ -1,0 +1,363 @@
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  font-family: inherit;
+}
+
+.orb {
+  display: none;
+}
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1rem;
+  padding: 0.85rem clamp(1.25rem, 3vw, 2.5rem) 0.85rem clamp(1.5rem, 4vw, 3rem);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+  transition:
+    background 0.22s ease,
+    border-color 0.22s ease,
+    box-shadow 0.22s ease,
+    backdrop-filter 0.22s ease;
+}
+
+/* Solid scrolled state — opaque so content underneath isn't visible */
+.navScrolled {
+  background: var(--surface);
+  border-bottom-color: var(--border);
+  box-shadow: 0 4px 16px rgba(42, 35, 51, 0.05);
+}
+
+html[data-theme="dark"] .navScrolled {
+  background: var(--surface);
+  border-bottom-color: var(--border);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+}
+
+.navLeft {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin-left: clamp(0.35rem, 1.2vw, 0.85rem);
+}
+
+.logoText {
+  font-weight: 700;
+  font-size: clamp(1.18rem, 1.1rem + 0.45vw, 1.38rem);
+  letter-spacing: -0.01em;
+  color: var(--accent);
+  text-decoration: none !important;
+  white-space: nowrap;
+  font-family: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.logoText:hover,
+.logoText:focus,
+.logoText:focus-visible,
+.logoText:active {
+  text-decoration: none !important;
+  outline: none;
+}
+
+.navTrailing {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: clamp(0.35rem, 1vw, 0.7rem);
+}
+
+.navTrailing > button {
+  flex-shrink: 0;
+}
+
+.navTrailing .cta {
+  flex-shrink: 0;
+}
+
+/* ── "More" popover (mobile only) ─────────────────────────────────────────── */
+.moreWrap {
+  position: relative;
+  display: none; /* shown only on mobile via media query */
+  flex-shrink: 0;
+}
+
+.moreButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.moreButton:hover,
+.moreButton[aria-expanded="true"] {
+  color: var(--accent);
+  background: var(--surface-2);
+}
+
+.morePopover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 110;
+  min-width: 200px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.18);
+  padding: 0.4rem;
+  transform-origin: top right;
+  animation: popoverIn 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes popoverIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.moreItem {
+  min-height: 46px;
+  justify-content: flex-start;
+  font-size: 0.98rem;
+  width: 100%;
+}
+
+.moreDivider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.3rem 0.25rem;
+}
+
+.moreThemeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 46px;
+  padding: 0 0.6rem 0 0.9rem;
+  border-radius: 8px;
+}
+
+.moreThemeLabel {
+  font-size: 0.98rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* ── Bottom navigation bar (mobile only) ──────────────────────────────────── */
+.bottomNav {
+  display: none; /* shown only on mobile via media query */
+}
+
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.98rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+
+.navLink:hover:not(.navLinkActive) {
+  color: var(--accent);
+  border-color: var(--accent-2);
+}
+
+.navLink.navLinkActive {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.55rem clamp(1.05rem, 2.2vw, 1.5rem);
+  border-radius: 4px;
+  border: 1px solid var(--accent);
+  font-family: inherit;
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  color: #fff;
+  background: var(--accent);
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.ctaIcon {
+  flex-shrink: 0;
+  display: block;
+}
+
+.cta:hover:not(.ctaActive) {
+  background: #143664;
+  border-color: #143664;
+}
+
+html[data-theme="dark"] .cta:hover:not(.ctaActive) {
+  background: #5b8ec5;
+  border-color: #5b8ec5;
+}
+
+.cta.ctaActive {
+  background: var(--surface-2);
+  color: var(--accent);
+  border-color: var(--border);
+}
+
+html[data-theme="dark"] .cta.ctaActive {
+  background: var(--surface-2);
+  color: var(--accent);
+}
+
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: min(1220px, 92vw);
+  margin: 0 auto;
+  padding: 2.5rem clamp(1.25rem, 4vw, 2.5rem) 4rem;
+  position: relative;
+  z-index: 1;
+  overflow-x: clip;
+}
+
+@media (max-width: 720px) {
+  /* Decluttered header: logo on the left, single "More" icon on the right. */
+  .nav {
+    flex-wrap: nowrap;
+    padding: 0.55rem 0.85rem;
+  }
+
+  .navTrailing {
+    margin-left: auto;
+    width: auto;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+  }
+
+  /* Inline nav items (About, Quick Lookup, Ask Question, theme) are not in the
+     header on mobile — they live in the bottom nav + the "More" popover. */
+  .desktopNavItem {
+    display: none;
+  }
+
+  .moreWrap {
+    display: flex;
+  }
+
+  /* Pin the primary workflows to a thumb-friendly bottom bar. */
+  .bottomNav {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.06);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .bottomNavItem {
+    flex: 1;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    min-height: 58px;
+    padding: 0.5rem 0.5rem;
+    color: var(--muted);
+    text-decoration: none;
+    font-family: inherit;
+    font-size: 0.74rem;
+    font-weight: 600;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+
+  .bottomNavItem:active {
+    background: var(--surface-2);
+  }
+
+  .bottomNavItemActive {
+    color: var(--accent);
+  }
+
+  /* Keep page content clear of the fixed bottom bar. */
+  .main {
+    padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 1.25rem);
+  }
+}
+
+/* Very small phones */
+@media (max-width: 400px) {
+  .nav {
+    padding: 0.5rem 0.65rem;
+  }
+
+  .logoText {
+    font-size: 1.05rem;
+  }
+}
+
+/* ── Chat route (mobile): give the chat its own full-viewport app shell ─────
+   The chat page renders its own sticky top bar + pinned input, so the global
+   header and bottom nav step aside and the layout fills exactly 100dvh. */
+@media (max-width: 720px) {
+  .chatRoute {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .chatRoute .nav,
+  .chatRoute .bottomNav {
+    display: none;
+  }
+
+  .chatRoute .main {
+    height: 100vh;
+    height: 100dvh;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+}

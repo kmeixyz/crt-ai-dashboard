@@ -1,54 +1,6 @@
-/* =====================================================================
-   Lumen — Design System
-   Grounded in a professional edtech palette (navy / blue / emerald),
-   Inter throughout, full light + dark support, motion tokens.
-   All values are semantic tokens so theming is centralized here.
-   ===================================================================== */
 
+/* Lumen layout/type scale (colors come from census-globals.css) */
 :root {
-  color-scheme: light;
-
-  /* --- Neutrals & surfaces (light) ------------------------------ */
-  --c-ink: #0f172a;
-  --c-ink-soft: #475569;
-  --c-ink-faint: #64748b;
-  --c-line: #e2e8f0;
-  --c-line-strong: #cbd5e1;
-  --c-bg: #f5f8fc;
-  --c-surface: #ffffff;
-  --c-surface-alt: #f1f5f9;
-  --c-surface-2: #eaf0f8;
-
-  /* --- Brand & semantic hues (light) ---------------------------- */
-  --c-brand: #1e3a5f; /* deep navy — brand, hero */
-  --c-primary: #2563eb; /* blue — primary actions */
-  --c-primary-ink: #ffffff;
-  --c-primary-soft: #e6eefe;
-  --c-primary-hover: #1d4ed8;
-
-  --c-accent: #b45309; /* amber — community anchors */
-  --c-accent-soft: #fbedda;
-
-  --c-teal: #0f766e; /* teal — accessibility */
-  --c-teal-soft: #dff2ef;
-
-  --c-rose: #be123c; /* rose — differentiation */
-  --c-rose-soft: #fbe4e9;
-
-  --c-green: #047857; /* emerald — success / pass */
-  --c-green-soft: #dcf3ea;
-
-  --c-warn: #a16207; /* caution / guardrail */
-  --c-warn-soft: #fbf1d9;
-
-  /* --- Typography ----------------------------------------------- */
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Helvetica, Arial,
-    sans-serif;
-  --font-serif: "Inter", system-ui, -apple-system, "Segoe UI", Helvetica, Arial,
-    sans-serif;
-  --font-mono: "Inter", system-ui, -apple-system, "Segoe UI", Helvetica, Arial,
-    sans-serif;
-
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
@@ -58,8 +10,6 @@
   --text-3xl: 2.25rem;
   --text-4xl: 3rem;
   --text-5xl: 3.75rem;
-
-  /* --- Spacing (4/8 rhythm) ------------------------------------- */
   --sp-1: 4px;
   --sp-2: 8px;
   --sp-3: 12px;
@@ -69,100 +19,44 @@
   --sp-7: 48px;
   --sp-8: 64px;
   --sp-9: 96px;
-
-  /* --- Shape ---------------------------------------------------- */
   --radius-sm: 8px;
   --radius: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 26px;
-  --radius-pill: 999px;
-
-  /* --- Elevation (layered, tinted) ------------------------------ */
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06),
-    0 1px 3px rgba(15, 23, 42, 0.05);
-  --shadow: 0 4px 12px rgba(15, 23, 42, 0.08),
-    0 2px 4px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.14),
-    0 6px 14px rgba(15, 23, 42, 0.08);
-  --ring: 0 0 0 3px var(--c-primary-soft);
-
-  /* --- Motion --------------------------------------------------- */
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 9999px;
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow: 0 4px 12px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.1), 0 4px 10px rgba(15, 23, 42, 0.06);
+  --ring: 0 0 0 3px var(--accent-glow);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --dur-fast: 140ms;
   --dur: 220ms;
   --dur-slow: 380ms;
-
-  /* --- Layout --------------------------------------------------- */
   --maxw: 1200px;
   --nav-h: 64px;
-
-  /* --- Icon sizes ----------------------------------------------- */
   --icon-sm: 16px;
   --icon-md: 20px;
   --icon-lg: 24px;
-
-  /* --- Questionnaire (Quick Lookup) ----------------------------- */
-  --c-quiz-accent: #1e3a5f;
-  --c-quiz-on-accent: #ffffff;
-  --c-quiz-selected-bg: #ffffff;
-  --c-quiz-selected-ink: #1e3a5f;
-  --c-option-bg: #e8eef6;
-  --c-option-bg-hover: #dde6f2;
-  --c-option-ink: #3d4a63;
+  /* semantic accents kept for feature chips */
+  --c-accent: #b45309;
+  --c-accent-soft: #fbedda;
+  --c-teal: #0f766e;
+  --c-teal-soft: #dff2ef;
+  --c-rose: #be123c;
+  --c-rose-soft: #fbe4e9;
+  --c-green: #047857;
+  --c-green-soft: #dcf3ea;
+  --c-warn: #a16207;
+  --c-warn-soft: #fbf1d9;
 }
 
-/* Quiz palette overrides for dark theme */
-[data-theme="dark"] {
-  --c-quiz-accent: #2f6fd0;
-  --c-quiz-on-accent: #ffffff;
-  --c-quiz-selected-bg: #17233b;
-  --c-quiz-selected-ink: #a9c7ff;
-  --c-option-bg: #1a2740;
-  --c-option-bg-hover: #223252;
-  --c-option-ink: #c4cfe4;
-}
-
-/* --- Dark theme ------------------------------------------------- */
-[data-theme="dark"] {
-  color-scheme: dark;
-
-  --c-ink: #e9eef8;
-  --c-ink-soft: #c4cfe4; /* brightened ~12% for WCAG contrast on dark slate */
-  --c-ink-faint: #9aa7c2;
-  --c-line: #26324b;
-  --c-line-strong: #3a4864;
-  --c-bg: #0b1220;
-  --c-surface: #121c30;
-  --c-surface-alt: #182338;
-  --c-surface-2: #1d2942;
-
-  --c-brand: #dbe6f7;
-  --c-primary: #6aa5fb;
-  --c-primary-ink: #071426;
-  --c-primary-soft: rgba(106, 165, 251, 0.16);
-  --c-primary-hover: #86b7fc;
-
-  --c-accent: #e2a765;
-  --c-accent-soft: rgba(226, 167, 101, 0.15);
-
-  --c-teal: #4fd1c5;
-  --c-teal-soft: rgba(79, 209, 197, 0.14);
-
-  --c-rose: #fb7185;
-  --c-rose-soft: rgba(251, 113, 133, 0.15);
-
-  --c-green: #34d399;
-  --c-green-soft: rgba(52, 211, 153, 0.15);
-
-  --c-warn: #e2bd63;
-  --c-warn-soft: rgba(226, 189, 99, 0.14);
-
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 24px 50px rgba(0, 0, 0, 0.55);
-  --ring: 0 0 0 3px rgba(106, 165, 251, 0.35);
-}
+/* =====================================================================
+   Lumen — Design System
+   Grounded in a professional edtech palette (navy / blue / emerald),
+   Inter throughout, full light + dark support, motion tokens.
+   All values are semantic tokens so theming is centralized here.
+   ===================================================================== */
 
 * {
   box-sizing: border-box;
@@ -176,7 +70,6 @@ body,
 .card,
 .group,
 .topbar,
-.footer,
 .select,
 .table th,
 .table td,
@@ -200,6 +93,13 @@ html {
   scroll-behavior: smooth;
 }
 
+/* About page: instant section jumps so scroll-spy doesn't thrash the sidebar
+   while a smooth animation passes through intermediate sections.
+   Named distinctly from legacy `.about-page` shell styles in app.css. */
+html.about-instant-scroll {
+  scroll-behavior: auto;
+}
+
 html,
 body,
 #root {
@@ -219,9 +119,8 @@ body {
 }
 
 h1,
-h2,
-h3,
-h4 {
+h2 {
+  font-family: var(--font-serif);
   line-height: 1.15;
   margin: 0 0 var(--sp-3);
   font-weight: 700;
@@ -229,8 +128,18 @@ h4 {
   color: var(--c-ink);
 }
 
+h3,
+h4 {
+  font-family: var(--font-sans);
+  line-height: 1.25;
+  margin: 0 0 var(--sp-3);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--c-ink);
+}
+
 h1 {
-  font-size: var(--text-3xl);
+  font-size: clamp(2.25rem, 4vw, 2.75rem);
 }
 h2 {
   font-size: var(--text-2xl);
@@ -259,7 +168,12 @@ a:hover {
 }
 
 ::selection {
-  background: var(--c-primary-soft);
+  background: #a9c7fb;
+  color: #10233f;
+}
+::-moz-selection {
+  background: #a9c7fb;
+  color: #10233f;
 }
 
 /* --- Layout ----------------------------------------------------- */
@@ -307,7 +221,7 @@ a:hover {
   background: var(--c-surface);
   border: 1px solid var(--c-line);
   border-radius: var(--radius-lg);
-  padding: var(--sp-5);
+  padding: var(--sp-6);
   box-shadow: var(--shadow-sm);
 }
 .card--interactive {
@@ -339,7 +253,7 @@ a:hover {
   border-color: var(--c-line-strong);
 }
 
-/* --- Buttons ----------------------------------------------------- */
+/* --- Buttons (pill-shaped CTAs) --------------------------------- */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -347,11 +261,11 @@ a:hover {
   gap: var(--sp-2);
   font-family: inherit;
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1;
   min-height: 44px;
-  padding: 0 18px;
-  border-radius: var(--radius-sm);
+  padding: 0 20px;
+  border-radius: var(--radius-pill);
   border: 1px solid transparent;
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-out),
@@ -372,7 +286,7 @@ a:hover {
 .btn-primary {
   background: var(--c-primary);
   color: var(--c-primary-ink);
-  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 1px 2px rgba(29, 78, 216, 0.28);
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--c-primary-hover);
@@ -390,18 +304,19 @@ a:hover {
 .btn-subtle {
   background: var(--c-surface-alt);
   color: var(--c-ink);
+  border-color: var(--c-line);
 }
 .btn-subtle:hover:not(:disabled) {
   background: var(--c-surface-2);
 }
 .btn-sm {
   min-height: 36px;
-  padding: 0 12px;
+  padding: 0 14px;
   font-size: var(--text-xs);
 }
 .btn-lg {
   min-height: 52px;
-  padding: 0 26px;
+  padding: 0 28px;
   font-size: var(--text-base);
 }
 .btn-block {
@@ -583,10 +498,10 @@ a:hover {
 }
 .eyebrow {
   text-transform: uppercase;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.1em;
   font-size: var(--text-xs);
-  font-weight: 700;
-  color: var(--c-primary);
+  font-weight: 800;
+  color: var(--c-ink-faint);
 }
 
 /* --- Skip link (a11y) ------------------------------------------- */

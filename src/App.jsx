@@ -1,105 +1,74 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ToastProvider, useTheme, useRevealOnScroll } from "./components/ui.jsx";
-import Icon from "./components/Icon.jsx";
+import { ToastProvider, useRevealOnScroll } from "./components/ui.jsx";
+import SiteLayout from "./components/SiteLayout.jsx";
 import Landing from "./pages/Landing.jsx";
 import Generate from "./pages/Generate.jsx";
 import About from "./pages/About.jsx";
+import Learn from "./pages/Learn.jsx";
 import { defaultInput } from "./data/inputSchema.js";
 
-const NAV = [
-  { id: "about", label: "About" },
-  { id: "generate", label: "Resource Builder" },
-];
+// URL paths for each route. Home stays at the root URL; the others get clean
+// paths so they're linkable and survive refresh (Vite's SPA fallback serves
+// index.html for these).
+const ROUTE_TO_PATH = {
+  landing: "/",
+  generate: "/builder",
+  about: "/about",
+  learn: "/method",
+};
+const PATH_TO_ROUTE = {
+  "/": "landing",
+  "/builder": "generate",
+  "/about": "about",
+  "/method": "learn",
+};
+
+function routeFromLocation() {
+  return PATH_TO_ROUTE[window.location.pathname] || "landing";
+}
 
 export default function App() {
-  const [route, setRoute] = useState("landing");
+  const [route, setRoute] = useState(routeFromLocation);
   const [input, setInput] = useState(defaultInput);
-  const { theme, toggle } = useTheme();
-  const mainRef = useRef(null);
   const firstRender = useRef(true);
 
   useRevealOnScroll(route);
 
   const go = (id) => {
     setRoute(id);
+    const path = ROUTE_TO_PATH[id] || "/";
+    if (window.location.pathname !== path) {
+      window.history.pushState({ route: id }, "", path);
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  // Keep route in sync with browser back/forward navigation.
+  useEffect(() => {
+    const onPop = () => setRoute(routeFromLocation());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false;
       return;
     }
-    mainRef.current?.focus({ preventScroll: true });
+    document.getElementById("main")?.focus?.({ preventScroll: true });
   }, [route]);
 
   return (
     <ToastProvider>
-      <a className="skip-link" href="#main">Skip to main content</a>
-
-      <header className="topbar">
-        <div className="container topbar__inner">
-          <button className="brand" onClick={() => go("landing")} aria-label="Lumen home">
-            <span className="brand__mark">
-              <Icon name="spark" size="sm" style={{ color: "#fff" }} />
-            </span>
-            <span>Lumen</span>
-          </button>
-          <div className="spacer" />
-          <nav className="nav" aria-label="Primary">
-            {NAV.map((n) => (
-              <button
-                key={n.id}
-                className={`nav__link${route === n.id ? " nav__link--active" : ""}`}
-                aria-current={route === n.id ? "page" : undefined}
-                onClick={() => go(n.id)}
-              >
-                {n.label}
-              </button>
-            ))}
-          </nav>
-          <button
-            className="btn btn-primary btn-sm no-print"
-            onClick={() => go("generate")}
-          >
-            <Icon name="message" size="sm" /> Open Builder
-          </button>
-          <button
-            className="icon-btn"
-            onClick={toggle}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            title={theme === "dark" ? "Light mode" : "Dark mode"}
-          >
-            <Icon name={theme === "dark" ? "sun" : "moon"} size="sm" />
-          </button>
-        </div>
-      </header>
-
-      <main id="main" ref={mainRef} tabIndex={-1} style={{ outline: "none" }}>
+      <a className="skip-link" href="#main">
+        Skip to main content
+      </a>
+      <SiteLayout route={route} go={go}>
         {route === "landing" && <Landing go={go} />}
         {route === "generate" && <Generate input={input} setInput={setInput} />}
         {route === "about" && <About />}
-      </main>
-
-      <footer className="footer">
-        <div className="container">
-          <div className="row row-wrap between" style={{ gap: 16 }}>
-            <div className="row" style={{ gap: 10 }}>
-              <span className="brand__mark" style={{ width: 28, height: 28, borderRadius: 8 }}>
-                <Icon name="spark" size="sm" style={{ color: "#fff" }} />
-              </span>
-              <div>
-                <strong style={{ color: "var(--c-ink)" }}>Lumen</strong>
-                <span className="muted"> · Culturally responsive STEM teaching</span>
-              </div>
-            </div>
-            <div className="tiny faint" style={{ maxWidth: "46ch" }}>
-              Read AI output for accuracy and cultural fit before you use it in class. Do not enter
-              anything that identifies a specific student.
-            </div>
-          </div>
-        </div>
-      </footer>
+        {route === "learn" && <Learn />}
+      </SiteLayout>
     </ToastProvider>
   );
 }

@@ -32,23 +32,79 @@ export function ToastProvider({ children }) {
   );
 }
 
-// ---- Theme (light / dark) -------------------------------------------
+// ---- Theme (CensusBot parity: light default, view-transition reveal) -
+const THEME_KEY = "lumen-theme";
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch {
+    /* ignore */
+  }
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+}
+
+function withThemeTransition(origin, mutate) {
+  const root = document.documentElement;
+  if (typeof document.startViewTransition !== "function" || prefersReducedMotion()) {
+    mutate();
+    return;
+  }
+  if (origin) {
+    root.style.setProperty("--vt-x", `${origin.x}px`);
+    root.style.setProperty("--vt-y", `${origin.y}px`);
+  }
+  root.classList.add("theme-reveal");
+  const transition = document.startViewTransition(() => mutate());
+  transition.finished.finally(() => root.classList.remove("theme-reveal"));
+}
+
 export function useTheme() {
-  const [theme, setTheme] = useState(() => {
-    const saved = typeof localStorage !== "undefined" && localStorage.getItem("lumen-theme");
-    if (saved) return saved;
-    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  });
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
+  const [theme, setThemeState] = useState(() => {
     try {
-      localStorage.setItem("lumen-theme", theme);
+      const saved = localStorage.getItem(THEME_KEY);
+      if (saved === "light" || saved === "dark") return saved;
     } catch {
       /* ignore */
     }
-  }, [theme]);
-  const toggle = useCallback(() => setTheme((t) => (t === "dark" ? "light" : "dark")), []);
-  return { theme, toggle };
+    return "light";
+  });
+  const themeRef = useRef(theme);
+
+  useEffect(() => {
+    const attr = document.documentElement.dataset.theme;
+    if (attr === "light" || attr === "dark") {
+      themeRef.current = attr;
+      setThemeState(attr);
+      return;
+    }
+    applyTheme(theme);
+  }, []);
+
+  const setTheme = useCallback((next, origin) => {
+    themeRef.current = next;
+    withThemeTransition(origin, () => {
+      setThemeState(next);
+      applyTheme(next);
+    });
+  }, []);
+
+  const toggleTheme = useCallback((origin) => {
+    const next = themeRef.current === "dark" ? "light" : "dark";
+    themeRef.current = next;
+    withThemeTransition(origin, () => {
+      setThemeState(next);
+      applyTheme(next);
+    });
+  }, []);
+
+  const toggle = useCallback(() => toggleTheme(), [toggleTheme]);
+
+  return { theme, setTheme, toggleTheme, toggle };
 }
 
 // ---- Scroll reveal ---------------------------------------------------

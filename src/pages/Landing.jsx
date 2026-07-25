@@ -1,5 +1,7 @@
 import React from "react";
+import { motion } from "framer-motion";
 import Icon from "../components/Icon.jsx";
+import landing from "../styles/Landing.module.css";
 
 const MODULES = [
   { icon: "book", label: "Lesson Plan" },
@@ -8,60 +10,102 @@ const MODULES = [
   { icon: "message", label: "Feedback" },
 ];
 
+const gridVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } },
+};
+const gridItemVariant = {
+  hidden: { opacity: 0, y: 14 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.38, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
 export default function Landing({ go }) {
   return (
-    <div className="home">
-      <div className="container">
-        <section className="home-hero">
-          <h1 className="home-hero__title">
-            Build culturally responsive STEM materials in plain language.
-          </h1>
-          <p className="home-hero__lead">
-            Describe your class once. Get a lesson, activity, assessment, or feedback note that
-            starts from your students and their community.
+    <div className={landing.pageWrapper}>
+      <div className={landing.pageContent}>
+        <section className={landing.hero}>
+          <p className={landing.heroHeading}>
+            Build culturally responsive STEM materials
+            <span className={landing.heroAccent}>in plain language</span>
           </p>
-          <div className="home-hero__cta">
-            <button className="btn btn-primary btn-lg" onClick={() => go("generate")}>
-              <Icon name="sparkles" size="sm" /> Open Resource Builder
-            </button>
-          </div>
         </section>
 
-        <section className="home-section">
-          <div className="home-section__head">
-            <h2 className="home-section__title">Start building</h2>
-            <button type="button" className="home-section__link" onClick={() => go("generate")}>
-              Open builder →
-            </button>
-          </div>
-          <div className="home-grid">
-            {MODULES.map((m) => (
+        <div className={landing.homeActions}>
+          <div className={landing.homeSearchWrap}>
+            <div className={landing.searchRow}>
+              <span className={landing.searchIcon}>
+                <Icon name="sparkles" size="sm" />
+              </span>
               <button
-                key={m.label}
                 type="button"
-                className="home-tile"
+                className={landing.searchInput}
+                style={{ textAlign: "left", cursor: "pointer" }}
                 onClick={() => go("generate")}
               >
-                <span className="home-tile__icon">
-                  <Icon name={m.icon} />
-                </span>
-                <span className="home-tile__label">{m.label}</span>
+                Open the Resource Builder to start a draft…
               </button>
-            ))}
+              <button
+                type="button"
+                className={landing.searchSubmitBtn}
+                onClick={() => go("generate")}
+              >
+                Start
+              </button>
+            </div>
           </div>
-        </section>
 
-        <section className="home-about">
-          <h2 className="home-about__title">About Lumen</h2>
-          <p className="home-about__body">
-            Lumen is a drafting assistant for high school STEM teachers. Cultural context and
-            accessibility supports are part of the workflow, not an afterthought. Always review
-            AI output before you use it with students.
-          </p>
-          <button type="button" className="home-about__link" onClick={() => go("about")}>
-            Learn more →
-          </button>
-        </section>
+          <section className={landing.quickstart}>
+            <div className={landing.quickstartHeader}>
+              <h2 className={landing.quickstartTitle}>Resource Builder</h2>
+              <button
+                type="button"
+                className={landing.allMetricsLink}
+                onClick={() => go("generate")}
+              >
+                Open Builder →
+              </button>
+            </div>
+            <motion.div
+              className={landing.metricGrid}
+              variants={gridVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {MODULES.map((m) => (
+                <motion.button
+                  key={m.label}
+                  type="button"
+                  className={landing.metricCard}
+                  variants={gridItemVariant}
+                  onClick={() => go("generate")}
+                >
+                  <span className={landing.metricCardFace}>
+                    <span className={landing.metricCardIcon}>
+                      <Icon name={m.icon} />
+                    </span>
+                    <span className={landing.metricCardLabel}>{m.label}</span>
+                  </span>
+                </motion.button>
+              ))}
+            </motion.div>
+          </section>
+
+          <section className={landing.aboutCard}>
+            <h2 className={landing.aboutCardTitle}>About the Method</h2>
+            <p className={landing.aboutSectionText}>
+              Lumen drafts STEM materials from culturally responsive pedagogy, culturally sustaining
+              pedagogy, and universal design for learning. Cultural context and accessibility
+              supports are part of the workflow, not an afterthought.
+            </p>
+            <button type="button" className={landing.learnMoreLink} onClick={() => go("learn")}>
+              Learn more →
+            </button>
+          </section>
+        </div>
       </div>
     </div>
   );
