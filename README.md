@@ -24,7 +24,9 @@ npm run preview  # preview the production build
 
 ## Deployment
 
-Deployed via Vercel, connected to the `main` branch. Push to `main` to deploy, or run `vercel` locally to preview a build before pushing. Vercel auto-detects the Vite framework and runs `npm run build`, so no extra configuration is needed.
+Deployed via Vercel, connected to the `main` branch. Push to `main` to deploy, or run `vercel` locally to preview a build before pushing. Vercel auto-detects the Vite framework and runs `npm run build`.
+
+Because the app is a single-page app that uses the History API for clean URLs (`/builder`, `/about`, `/method`), `vercel.json` includes a SPA rewrite that serves `index.html` for any path not matching a static file. Without it, refreshing or directly opening a deep URL returns Vercel's platform `404: NOT_FOUND`. Keep this file — it is required for client-side routing to survive a page load.
 
 ## Features
 

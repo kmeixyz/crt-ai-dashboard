@@ -1560,3 +1560,385 @@ html[data-theme="dark"] .checkMarkFail {
     animation: none;
   }
 }
+
+/* ══ Fork screen (Path A: templates · Path B: build from scratch) ══════════ */
+.forkIntro {
+  width: 100%;
+  max-width: 980px;
+  text-align: center;
+  margin-bottom: 0.25rem;
+}
+
+.pathSection {
+  width: 100%;
+  max-width: 980px;
+}
+
+.pathSection + .pathSection {
+  margin-top: 1.75rem;
+}
+
+.pathHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+
+.pathKicker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+  height: 1.6rem;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.pathTitle {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.pathSub {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.templateGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 620px) {
+  .templateGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.templateCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  padding: 1.25rem 1.35rem;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.templateCard:hover {
+  border-color: var(--accent);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+}
+
+.templateCard:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.templateCardTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.16rem 0.6rem;
+  border-radius: 999px;
+  background: var(--badge-bg);
+  border: 1px solid var(--badge-border);
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.templateCardTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.templateCardBlurb {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.templateCardCta {
+  margin-top: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.scratchCard {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  text-align: left;
+  padding: 1.25rem 1.5rem;
+  border-radius: 16px;
+  border: 1.5px dashed var(--border-hover);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.scratchCard:hover {
+  border-color: var(--accent);
+}
+
+.scratchCard:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.scratchIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.scratchText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.scratchTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.scratchSub {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.scratchArrow {
+  margin-left: auto;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ══ Review screen (template summary, inline-editable) ═════════════════════ */
+.reviewLegend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 980px;
+  padding: 0.55rem 0.9rem;
+  border-radius: 11px;
+  background: var(--prefill-bg);
+  border: 1px solid var(--prefill-border);
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.reviewLegendSwatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--prefill-bg);
+  border: 1px solid var(--prefill-border);
+  flex-shrink: 0;
+}
+
+.reviewGroupTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 1.1rem;
+}
+
+.reviewGroupTitle::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.reviewRow {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 0.75rem 1rem;
+  align-items: start;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.reviewRow:first-of-type {
+  border-top: none;
+}
+
+.reviewRowLabel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-top: 0.55rem;
+}
+
+.autoBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--prefill-bg);
+  border: 1px solid var(--prefill-border);
+  color: var(--accent);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 560px) {
+  .reviewRow {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+  .reviewRowLabel {
+    padding-top: 0;
+  }
+}
+
+/* Prefilled controls: light-blue "auto-filled" tint that clears once edited. */
+.prefill.comboboxInput,
+.prefill.textArea,
+.prefillInput.comboboxInput,
+.prefillInput.textArea {
+  background: var(--prefill-bg);
+  border-color: var(--prefill-border);
+}
+
+.reviewChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.reviewChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.reviewChip:hover {
+  border-color: var(--accent);
+}
+
+.reviewChip:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.reviewChipSelected,
+.reviewChipSelected:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.reviewChipPrefill {
+  background: var(--prefill-bg);
+  border-color: var(--prefill-border);
+}
+
+.reviewGroups {
+  width: 100%;
+  max-width: 980px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Draft source badge (Gemini vs local mock fallback) ── */
+.sourceBadge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.16rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid var(--badge-border);
+  background: var(--badge-bg);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* Amber "local draft" variant so a fallback is visually obvious. */
+.sourceBadgeMock {
+  border-color: #f0d0a0;
+  background: #fff7ed;
+  color: #b45309;
+}
+
+html[data-theme="dark"] .sourceBadgeMock {
+  border-color: #78350f;
+  background: #292217;
+  color: #fbbf24;
+}

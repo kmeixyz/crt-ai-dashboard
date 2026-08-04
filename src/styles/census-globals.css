@@ -27,6 +27,8 @@
   --orb-gradient: none;
   --badge-bg:      #eef3fa;
   --badge-border:  #c9d8ec;
+  --prefill-bg:    #d8e8fb;
+  --prefill-border: #9cc2ee;
   --select-option-bg: #ffffff;
   --result-value-shadow: none;
   --chart-surface:   #ffffff;
@@ -67,6 +69,8 @@ html[data-theme="light"] {
   --orb-gradient: none;
   --badge-bg:      #eef3fa;
   --badge-border:  #c9d8ec;
+  --prefill-bg:    #d8e8fb;
+  --prefill-border: #9cc2ee;
   --select-option-bg: #ffffff;
   --result-value-shadow: none;
   --chart-surface:   #ffffff;
@@ -105,6 +109,8 @@ html[data-theme="dark"] {
   --orb-gradient: none;
   --badge-bg:      rgba(122, 167, 217, 0.12);
   --badge-border:  rgba(122, 167, 217, 0.32);
+  --prefill-bg:    rgba(122, 167, 217, 0.20);
+  --prefill-border: rgba(122, 167, 217, 0.50);
   --select-option-bg: #1a212c;
   --result-value-shadow: none;
   --chart-surface:   #1a212c;

@@ -10,20 +10,36 @@ import {
   resourceLevels,
   learningNeedOptions,
   outputTypes,
+  defaultInput,
 } from "../data/inputSchema.js";
 import { scenarios } from "../data/scenarios.js";
 import { revisionActions } from "../data/promptLibrary.js";
 import {
-  generate,
   applyRevision,
   runReview,
   outputToMarkdown,
   outputToText,
 } from "../engine/mockAI.js";
+import { generateResource } from "../engine/generateResource.js";
 import ex from "../styles/Explore.module.css";
 
-const WIZARD_STEPS = ["Format", "Class", "Context", "Results"];
-const PROGRESS = { 1: 25, 2: 50, 3: 75, 4: 100 };
+// The builder has two flows that share a Results screen:
+//   • template → review → results   (Path A: pick a pre-built template)
+//   • target → environment → output → results   (Path B: build from scratch)
+// A "fork" screen chooses between them.
+const CUSTOM_STEPS = ["Target", "Environment", "Output", "Results"];
+const TEMPLATE_STEPS = ["Review", "Results"];
+const PROGRESS = {
+  fork: 0,
+  target: 25,
+  environment: 50,
+  output: 75,
+  review: 50,
+  results: 100,
+};
+const CUSTOM_INDEX = { target: 1, environment: 2, output: 3, results: 4 };
+const CUSTOM_NAV = { 1: "target", 2: "environment", 3: "output" };
+const TEMPLATE_INDEX = { review: 1, results: 2 };
 
 const REVISION_ICONS = {
   accessible: "access",
@@ -71,6 +87,40 @@ const COURSE_OPTIONS = [
 ];
 const GRADE_OPTIONS = ["9", "10", "11", "12", "9-10", "10-11", "11-12"];
 
+const supportOptions = [
+  { key: "neurodiverseSupport", label: "Neurodiverse supports" },
+  { key: "lowTech", label: "Low-tech / offline" },
+];
+
+// Review-screen text fields, grouped to mirror the custom builder's chronology.
+const TARGET_TEXT = [
+  { key: "subject", label: fieldMeta.subject.label, placeholder: fieldMeta.subject.placeholder },
+  { key: "course", label: fieldMeta.course.label, placeholder: fieldMeta.course.placeholder },
+  { key: "grade", label: fieldMeta.grade.label, placeholder: fieldMeta.grade.placeholder },
+  { key: "topic", label: fieldMeta.topic.label, placeholder: fieldMeta.topic.placeholder },
+];
+const ENV_TEXT = [
+  {
+    key: "studentInterests",
+    label: fieldMeta.studentInterests.label,
+    placeholder: fieldMeta.studentInterests.placeholder,
+    textarea: true,
+  },
+  {
+    key: "communityContext",
+    label: fieldMeta.communityContext.label,
+    placeholder: fieldMeta.communityContext.placeholder,
+    textarea: true,
+  },
+  {
+    key: "culturalAssets",
+    label: fieldMeta.culturalAssets.label,
+    placeholder: fieldMeta.culturalAssets.placeholder,
+    textarea: true,
+  },
+  { key: "language", label: "Language support", placeholder: "e.g. English, English + Spanish" },
+];
+
 function Choice({ selected, onClick, children }) {
   return (
     <motion.button
@@ -101,24 +151,41 @@ function Choice({ selected, onClick, children }) {
   );
 }
 
-function MetricGroup({ label, count, action, children }) {
+// A row on the Review screen: uppercase label (+ "Auto" badge when the template
+// filled it) beside its inline-editable control.
+function ReviewRow({ label, auto, children }) {
   return (
-    <motion.div
-      className={ex.metricGroup}
-      variants={{
-        hidden: { opacity: 0, y: 10 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } },
-      }}
-    >
-      <div className={ex.metricGroupHeader}>
-        <span className={ex.metricGroupLabel}>
-          {label}
-          {typeof count === "number" ? ` (${count} selected)` : ""}
-        </span>
-        {action}
+    <div className={ex.reviewRow}>
+      <div className={ex.reviewRowLabel}>
+        {label}
+        {auto && <span className={ex.autoBadge}>Auto</span>}
       </div>
-      {children}
-    </motion.div>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+// Single-select chip group (reading level, resource level, output type, format).
+function ChipGroup({ options, value, onSelect, prefill }) {
+  return (
+    <div className={ex.reviewChips}>
+      {options.map((o) => {
+        const sel = value === o.value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            className={`${ex.reviewChip}${sel ? ` ${ex.reviewChipSelected}` : ""}${
+              sel && prefill ? ` ${ex.reviewChipPrefill}` : ""
+            }`}
+            aria-pressed={sel}
+            onClick={() => onSelect(o.value)}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -141,7 +208,9 @@ function fileName(output, ext) {
 
 export default function Generate({ input, setInput }) {
   const toast = useToast();
-  const [step, setStep] = useState(1);
+  const [flow, setFlow] = useState(null); // "template" | "custom" | null (fork)
+  const [screen, setScreen] = useState("fork");
+  const [prefilled, setPrefilled] = useState(() => new Set());
   const [fromProgress, setFromProgress] = useState(0);
   const [progressWidth, setProgressWidth] = useState(0);
   const [exitDir, setExitDir] = useState(0);
@@ -155,69 +224,113 @@ export default function Generate({ input, setInput }) {
   const [genId, setGenId] = useState(0);
   const [showRevise, setShowRevise] = useState(false);
 
-  const targetProgress = PROGRESS[step] ?? 25;
+  const targetProgress = PROGRESS[screen] ?? 0;
   const showFormat = input.outputType === "assessment" || input.outputType === "feedback";
   const formats = input.outputType === "assessment" ? assessmentFormats : feedbackFormats;
 
   const set = (k, v) => setInput((p) => ({ ...p, [k]: v }));
-  const toggleNeed = (n) =>
+  // On the Review screen, editing a prefilled field clears its "auto-filled"
+  // highlight — the teacher has taken ownership of that value.
+  const clearPrefill = (k) =>
+    setPrefilled((p) => {
+      if (!p.has(k)) return p;
+      const n = new Set(p);
+      n.delete(k);
+      return n;
+    });
+  const setField = (k, v) => {
+    set(k, v);
+    clearPrefill(k);
+  };
+  const toggleNeed = (n) => {
     setInput((p) => ({
       ...p,
       learningNeeds: p.learningNeeds.includes(n)
         ? p.learningNeeds.filter((x) => x !== n)
         : [...p.learningNeeds, n],
     }));
+    clearPrefill("learningNeeds");
+  };
   const allNeeds = learningNeedOptions.every((n) => input.learningNeeds.includes(n));
-  const toggleAllNeeds = () =>
-    setInput((p) => ({
-      ...p,
-      learningNeeds: allNeeds ? [] : [...learningNeedOptions],
-    }));
+  const toggleAllNeeds = () => {
+    setInput((p) => ({ ...p, learningNeeds: allNeeds ? [] : [...learningNeedOptions] }));
+    clearPrefill("learningNeeds");
+  };
+  const setOutputType = (v) => {
+    setField("outputType", v);
+    if (v === "assessment") setFormat("quiz");
+    if (v === "feedback") setFormat("strengths");
+  };
 
   const contextLabels = useMemo(() => {
-    const labels = [labelFor(input.outputType), input.subject, input.grade, input.topic].filter(
-      Boolean
-    );
-    return labels;
+    return [labelFor(input.outputType), input.subject, input.grade, input.topic].filter(Boolean);
   }, [input.outputType, input.subject, input.grade, input.topic]);
 
   const canGenerate = Boolean(input.topic?.trim() || input.subject?.trim());
-  const canLeaveFormat = Boolean(input.outputType);
-  const canLeaveClass = Boolean(input.subject?.trim() || input.topic?.trim());
+  const canLeaveTarget = Boolean(input.subject?.trim() || input.topic?.trim());
+
+  const steps = flow === "template" ? TEMPLATE_STEPS : CUSTOM_STEPS;
+  const stepIndex = (flow === "template" ? TEMPLATE_INDEX : CUSTOM_INDEX)[screen] ?? 1;
+  const showChrome = screen !== "fork";
 
   useEffect(() => {
     setProgressWidth(fromProgress);
     const id = requestAnimationFrame(() => setProgressWidth(targetProgress));
     return () => cancelAnimationFrame(id);
-  }, [fromProgress, targetProgress, step]);
+  }, [fromProgress, targetProgress, screen]);
 
   useEffect(() => () => clearTimeout(exitTimerRef.current), []);
 
-  function goToStep(next, direction) {
+  function go(next, direction) {
     setExitDir(direction);
     clearTimeout(exitTimerRef.current);
     exitTimerRef.current = setTimeout(() => {
-      setFromProgress(PROGRESS[step] ?? 0);
-      setStep(next);
+      setFromProgress(PROGRESS[screen] ?? 0);
+      setScreen(next);
       setExitDir(0);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }, 220);
   }
 
-  function handleWizardNav(target) {
-    if (target >= step) return;
-    if (target === 1 || target === 2 || target === 3) {
-      goToStep(target, 1);
+  function handleWizardNav(targetIdx) {
+    if (flow === "custom") {
+      const cur = CUSTOM_INDEX[screen];
+      if (targetIdx < cur && CUSTOM_NAV[targetIdx]) go(CUSTOM_NAV[targetIdx], 1);
+    } else if (flow === "template") {
+      if (targetIdx === 1 && screen === "results") go("review", 1);
     }
   }
 
-  const loadScenario = (s) => {
-    setInput((p) => ({ ...p, ...s.input }));
+  const chooseTemplate = (s) => {
+    setInput({ ...defaultInput, ...s.input });
+    setPrefilled(new Set(Object.keys(s.input)));
+    setFlow("template");
     setOutput(null);
     setReview(null);
     setReviewOpen(false);
     setShowRevise(false);
-    toast(`Loaded ${s.label}`);
+    if (s.input.outputType === "assessment") setFormat("quiz");
+    else if (s.input.outputType === "feedback") setFormat("strengths");
+    else setFormat("quiz");
+    go("review", -1);
+    toast(`Loaded ${s.title || s.label}`);
+  };
+
+  const startCustom = () => {
+    setInput({ ...defaultInput });
+    setPrefilled(new Set());
+    setFlow("custom");
+    setFormat("quiz");
+    setOutput(null);
+    setReview(null);
+    setReviewOpen(false);
+    setShowRevise(false);
+    go("target", -1);
+  };
+
+  const backToFork = () => {
+    setFlow(null);
+    go("fork", 1);
   };
 
   const run = async () => {
@@ -225,9 +338,12 @@ export default function Generate({ input, setInput }) {
     setReview(null);
     setReviewOpen(false);
     setShowRevise(false);
-    goToStep(4, -1);
+    go("results", -1);
     const fmt = showFormat ? format : undefined;
-    const out = await generate(input, { format: fmt });
+    const out = await generateResource(input, { format: fmt });
+    if (out._source === "mock") {
+      toast("Live AI is unavailable right now — showing a local draft.");
+    }
     setOutput(out);
     setGenId((n) => n + 1);
     setLoading(false);
@@ -264,13 +380,17 @@ export default function Generate({ input, setInput }) {
   };
   const doPrint = () => window.print();
 
+  const resultsBack = () => go(flow === "template" ? "review" : "output", 1);
+
   const restart = () => {
     setOutput(null);
     setReview(null);
     setReviewOpen(false);
     setShowRevise(false);
+    setPrefilled(new Set());
+    setFlow(null);
     setFromProgress(0);
-    goToStep(1, 1);
+    go("fork", 1);
   };
 
   const passCount = review ? review.filter((r) => r.pass).length : 0;
@@ -280,15 +400,17 @@ export default function Generate({ input, setInput }) {
     <div className={ex.wizardPage}>
       <h1 className={ex.pageTitle}>Resource Builder</h1>
 
-      <div className={ex.progressBlock}>
-        <WizardSteps current={step} onNavigate={handleWizardNav} steps={WIZARD_STEPS} />
-        <div className={ex.progressTrack}>
-          <div className={ex.progressFill} style={{ width: `${progressWidth}%` }} />
+      {showChrome && (
+        <div className={ex.progressBlock}>
+          <WizardSteps current={stepIndex} onNavigate={handleWizardNav} steps={steps} />
+          <div className={ex.progressTrack}>
+            <div className={ex.progressFill} style={{ width: `${progressWidth}%` }} />
+          </div>
         </div>
-      </div>
+      )}
 
       <motion.div
-        key={step}
+        key={screen}
         className={ex.wizardContent}
         initial={{ opacity: 0, x: fromProgress > targetProgress ? -48 : 48 }}
         animate={
@@ -297,7 +419,7 @@ export default function Generate({ input, setInput }) {
             : { opacity: 1, x: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } }
         }
       >
-        {step > 1 && step < 4 && contextLabels.length > 0 && (
+        {["environment", "output", "review"].includes(screen) && contextLabels.length > 0 && (
           <AnimatePresence>
             <motion.div
               className={ex.contextBadgeStrip}
@@ -321,163 +443,74 @@ export default function Generate({ input, setInput }) {
           </AnimatePresence>
         )}
 
-        {/* ── Step 1: Format (metrics-style choice grids) ── */}
-        {step === 1 && (
+        {/* ══ Fork: choose a template or build from scratch ══ */}
+        {screen === "fork" && (
           <>
-            <div className={ex.card}>
-              <p className={ex.question}>What would you like to create?</p>
+            <div className={ex.forkIntro}>
+              <p className={ex.question}>How do you want to start?</p>
               <p className={ex.questionSub}>
-                Choose a format, then the supports your students need.
+                Begin from a pre-built template, or build a resource from scratch.
               </p>
-
-              <motion.div
-                className={ex.metricGroups}
-                initial="hidden"
-                animate="visible"
-                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07 } } }}
-              >
-                <MetricGroup label="Quick start">
-                  <div className={ex.choiceList}>
-                    {scenarios.map((s) => (
-                      <Choice key={s.id} selected={false} onClick={() => loadScenario(s)}>
-                        {s.label}
-                      </Choice>
-                    ))}
-                  </div>
-                </MetricGroup>
-
-                <MetricGroup label="What to make">
-                  <div className={ex.choiceList}>
-                    {outputTypes.map((o) => (
-                      <Choice
-                        key={o.value}
-                        selected={input.outputType === o.value}
-                        onClick={() => {
-                          set("outputType", o.value);
-                          if (o.value === "assessment") setFormat("quiz");
-                          if (o.value === "feedback") setFormat("strengths");
-                        }}
-                      >
-                        {o.label}
-                      </Choice>
-                    ))}
-                  </div>
-                </MetricGroup>
-
-                {showFormat && (
-                  <MetricGroup label="Format">
-                    <div className={ex.choiceList}>
-                      {formats.map((f) => (
-                        <Choice
-                          key={f.value}
-                          selected={format === f.value}
-                          onClick={() => setFormat(f.value)}
-                        >
-                          {f.label}
-                        </Choice>
-                      ))}
-                    </div>
-                  </MetricGroup>
-                )}
-
-                <MetricGroup label="Reading level">
-                  <div className={ex.choiceList}>
-                    {readingLevels.map((r) => (
-                      <Choice
-                        key={r.value}
-                        selected={input.readingLevel === r.value}
-                        onClick={() => set("readingLevel", r.value)}
-                      >
-                        {r.label}
-                      </Choice>
-                    ))}
-                  </div>
-                </MetricGroup>
-
-                <MetricGroup
-                  label="Learning needs"
-                  count={input.learningNeeds.length}
-                  action={
-                    <button
-                      type="button"
-                      className={`${ex.selectAllBtn} ${
-                        input.learningNeeds.length > 0 ? ex.selectAllBtnActive : ""
-                      }`}
-                      onClick={toggleAllNeeds}
-                    >
-                      <svg
-                        width="11"
-                        height="11"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      {allNeeds ? "Deselect All" : "Select All"}
-                    </button>
-                  }
-                >
-                  <div className={ex.choiceList}>
-                    {learningNeedOptions.map((n) => (
-                      <Choice
-                        key={n}
-                        selected={input.learningNeeds.includes(n)}
-                        onClick={() => toggleNeed(n)}
-                      >
-                        {n}
-                      </Choice>
-                    ))}
-                  </div>
-                </MetricGroup>
-
-                <MetricGroup label="Additional supports">
-                  <div className={ex.choiceList}>
-                    <Choice
-                      selected={input.neurodiverseSupport}
-                      onClick={() => set("neurodiverseSupport", !input.neurodiverseSupport)}
-                    >
-                      Neurodiverse supports
-                    </Choice>
-                    <Choice
-                      selected={input.lowTech}
-                      onClick={() => set("lowTech", !input.lowTech)}
-                    >
-                      Low-tech / offline
-                    </Choice>
-                  </div>
-                </MetricGroup>
-
-                <MetricGroup label="Resource / tech level">
-                  <div className={ex.choiceList}>
-                    {resourceLevels.map((r) => (
-                      <Choice
-                        key={r.value}
-                        selected={input.resourceLevel === r.value}
-                        onClick={() => set("resourceLevel", r.value)}
-                      >
-                        {r.label}
-                      </Choice>
-                    ))}
-                  </div>
-                </MetricGroup>
-              </motion.div>
             </div>
 
-            <div className={ex.footerNav} style={{ justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                className={`${ex.btnPrimary}${canLeaveFormat ? ` ${ex.btnPrimaryActive}` : ""}`}
-                disabled={!canLeaveFormat}
-                onClick={() => goToStep(2, -1)}
-              >
-                Next →
+            <motion.section
+              className={ex.pathSection}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } }}
+            >
+              <div className={ex.pathHeader}>
+                <span className={ex.pathKicker}>A</span>
+                <span className={ex.pathTitle}>Use a pre-built template</span>
+                <span className={ex.pathSub}>— jump straight to a ready-to-tweak summary</span>
+              </div>
+              <div className={ex.templateGrid}>
+                {scenarios.map((s) => (
+                  <motion.button
+                    key={s.id}
+                    type="button"
+                    className={ex.templateCard}
+                    onClick={() => chooseTemplate(s)}
+                    whileTap={{ scale: 0.98 }}
+                    whileHover={{ y: -2, transition: { duration: 0.15 } }}
+                  >
+                    {s.tag && <span className={ex.templateCardTag}>{s.tag}</span>}
+                    <span className={ex.templateCardTitle}>{s.title || s.label}</span>
+                    {s.blurb && <span className={ex.templateCardBlurb}>{s.blurb}</span>}
+                    <span className={ex.templateCardCta}>Use template →</span>
+                  </motion.button>
+                ))}
+              </div>
+            </motion.section>
+
+            <motion.section
+              className={ex.pathSection}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{
+                opacity: 1,
+                y: 0,
+                transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1], delay: 0.06 },
+              }}
+            >
+              <div className={ex.pathHeader}>
+                <span className={ex.pathKicker}>B</span>
+                <span className={ex.pathTitle}>Build from scratch</span>
+                <span className={ex.pathSub}>— a blank canvas, in three quick steps</span>
+              </div>
+              <button type="button" className={ex.scratchCard} onClick={startCustom}>
+                <span className={ex.scratchIcon}>
+                  <Icon name="sparkles" size="md" />
+                </span>
+                <span className={ex.scratchText}>
+                  <span className={ex.scratchTitle}>Start a blank resource</span>
+                  <span className={ex.scratchSub}>
+                    Target → Environment → Output. You choose what to make at the end.
+                  </span>
+                </span>
+                <span className={ex.scratchArrow} aria-hidden="true">
+                  →
+                </span>
               </button>
-            </div>
+            </motion.section>
 
             <p className={ex.excludedNote}>
               Review AI output for accuracy and cultural fit before you use it in class. Never enter
@@ -486,12 +519,167 @@ export default function Generate({ input, setInput }) {
           </>
         )}
 
-        {/* ── Step 2: Class (location-style form + comboboxes) ── */}
-        {step === 2 && (
+        {/* ══ Template Review: single unified, inline-editable summary ══ */}
+        {screen === "review" && (
+          <>
+            <div className={ex.forkIntro}>
+              <p className={ex.question}>Review &amp; tweak your template</p>
+              <p className={ex.questionSub}>
+                Everything below was pre-filled. Edit any field, then generate.
+              </p>
+            </div>
+
+            <div className={ex.reviewLegend}>
+              <span className={ex.reviewLegendSwatch} aria-hidden="true" />
+              <span>
+                Highlighted fields were filled in by the template. Click any field to change it — the
+                highlight clears once you do.
+              </span>
+            </div>
+
+            <div className={ex.reviewGroups}>
+              <div className={ex.card}>
+                <p className={ex.reviewGroupTitle}>The Target — who &amp; what</p>
+                {TARGET_TEXT.map((f) => {
+                  const auto = prefilled.has(f.key);
+                  return (
+                    <ReviewRow key={f.key} label={f.label} auto={auto}>
+                      <input
+                        className={`${ex.comboboxInput}${auto ? ` ${ex.prefill}` : ""}`}
+                        value={input[f.key]}
+                        placeholder={f.placeholder}
+                        onChange={(e) => setField(f.key, e.target.value)}
+                      />
+                    </ReviewRow>
+                  );
+                })}
+                <ReviewRow label="Reading level" auto={prefilled.has("readingLevel")}>
+                  <ChipGroup
+                    options={readingLevels}
+                    value={input.readingLevel}
+                    prefill={prefilled.has("readingLevel")}
+                    onSelect={(v) => setField("readingLevel", v)}
+                  />
+                </ReviewRow>
+              </div>
+
+              <div className={ex.card}>
+                <p className={ex.reviewGroupTitle}>The Environment — context &amp; needs</p>
+                {ENV_TEXT.map((f) => {
+                  const auto = prefilled.has(f.key);
+                  return (
+                    <ReviewRow key={f.key} label={f.label} auto={auto}>
+                      {f.textarea ? (
+                        <textarea
+                          className={`${ex.textArea}${auto ? ` ${ex.prefill}` : ""}`}
+                          value={input[f.key]}
+                          placeholder={f.placeholder}
+                          onChange={(e) => setField(f.key, e.target.value)}
+                          style={{ minHeight: "4.5rem" }}
+                        />
+                      ) : (
+                        <input
+                          className={`${ex.comboboxInput}${auto ? ` ${ex.prefill}` : ""}`}
+                          value={input[f.key]}
+                          placeholder={f.placeholder}
+                          onChange={(e) => setField(f.key, e.target.value)}
+                        />
+                      )}
+                    </ReviewRow>
+                  );
+                })}
+                <ReviewRow label="Learning needs" auto={prefilled.has("learningNeeds")}>
+                  <div className={ex.reviewChips}>
+                    {learningNeedOptions.map((n) => {
+                      const sel = input.learningNeeds.includes(n);
+                      const pf = sel && prefilled.has("learningNeeds");
+                      return (
+                        <button
+                          key={n}
+                          type="button"
+                          className={`${ex.reviewChip}${sel ? ` ${ex.reviewChipSelected}` : ""}${
+                            pf ? ` ${ex.reviewChipPrefill}` : ""
+                          }`}
+                          aria-pressed={sel}
+                          onClick={() => toggleNeed(n)}
+                        >
+                          {n}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </ReviewRow>
+                <ReviewRow label="Resource / tech level" auto={prefilled.has("resourceLevel")}>
+                  <ChipGroup
+                    options={resourceLevels}
+                    value={input.resourceLevel}
+                    prefill={prefilled.has("resourceLevel")}
+                    onSelect={(v) => setField("resourceLevel", v)}
+                  />
+                </ReviewRow>
+                <ReviewRow label="Additional supports">
+                  <div className={ex.reviewChips}>
+                    {supportOptions.map((o) => {
+                      const sel = input[o.key];
+                      const pf = sel && prefilled.has(o.key);
+                      return (
+                        <button
+                          key={o.key}
+                          type="button"
+                          className={`${ex.reviewChip}${sel ? ` ${ex.reviewChipSelected}` : ""}${
+                            pf ? ` ${ex.reviewChipPrefill}` : ""
+                          }`}
+                          aria-pressed={Boolean(sel)}
+                          onClick={() => setField(o.key, !sel)}
+                        >
+                          {o.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </ReviewRow>
+              </div>
+
+              <div className={ex.card}>
+                <p className={ex.reviewGroupTitle}>The Output — the deliverable</p>
+                <ReviewRow label="What to make" auto={prefilled.has("outputType")}>
+                  <ChipGroup
+                    options={outputTypes}
+                    value={input.outputType}
+                    prefill={prefilled.has("outputType")}
+                    onSelect={setOutputType}
+                  />
+                </ReviewRow>
+                {showFormat && (
+                  <ReviewRow label="Format">
+                    <ChipGroup options={formats} value={format} onSelect={setFormat} />
+                  </ReviewRow>
+                )}
+              </div>
+            </div>
+
+            <div className={ex.footerNav} style={{ maxWidth: "none" }}>
+              <button type="button" className={ex.btnBack} onClick={backToFork}>
+                ← Templates
+              </button>
+              <button
+                type="button"
+                className={`${ex.btnPrimary}${canGenerate ? ` ${ex.btnPrimaryActive}` : ""}`}
+                disabled={loading || !canGenerate}
+                onClick={run}
+              >
+                {loading ? <span className={ex.spinner} /> : "Generate →"}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ══ Custom Step 1 · Target (who & what) ══ */}
+        {screen === "target" && (
           <div className={ex.card}>
-            <p className={ex.question}>What are you teaching?</p>
+            <p className={ex.question}>What are you teaching, and to whom?</p>
             <p className={ex.questionSub}>
-              Subject, course, grade, and the topic for this resource.
+              Subject, course, grade, topic, and reading level for this resource.
             </p>
 
             <div className={ex.fieldsGrid}>
@@ -538,31 +726,32 @@ export default function Generate({ input, setInput }) {
                   />
                 </div>
               </div>
-              <div className={ex.fieldsGridFull}>
-                <div className={ex.fieldGroup}>
-                  <label className={ex.fieldLabel} htmlFor="language">
-                    Language support
-                  </label>
-                  <input
-                    id="language"
-                    className={ex.comboboxInput}
-                    value={input.language}
-                    placeholder="e.g. English, English + Spanish"
-                    onChange={(e) => set("language", e.target.value)}
-                  />
-                </div>
+            </div>
+
+            <div className={ex.fieldGroup}>
+              <label className={ex.fieldLabel}>Reading level</label>
+              <div className={ex.choiceList}>
+                {readingLevels.map((r) => (
+                  <Choice
+                    key={r.value}
+                    selected={input.readingLevel === r.value}
+                    onClick={() => set("readingLevel", r.value)}
+                  >
+                    {r.label}
+                  </Choice>
+                ))}
               </div>
             </div>
 
             <div className={ex.footerNav} style={{ marginTop: "1.25rem", maxWidth: "none" }}>
-              <button type="button" className={ex.btnBack} onClick={() => goToStep(1, 1)}>
+              <button type="button" className={ex.btnBack} onClick={backToFork}>
                 ← Back
               </button>
               <button
                 type="button"
-                className={`${ex.btnPrimary}${canLeaveClass ? ` ${ex.btnPrimaryActive}` : ""}`}
-                disabled={!canLeaveClass}
-                onClick={() => goToStep(3, -1)}
+                className={`${ex.btnPrimary}${canLeaveTarget ? ` ${ex.btnPrimaryActive}` : ""}`}
+                disabled={!canLeaveTarget}
+                onClick={() => go("environment", -1)}
               >
                 Next →
               </button>
@@ -570,12 +759,13 @@ export default function Generate({ input, setInput }) {
           </div>
         )}
 
-        {/* ── Step 3: Context ── */}
-        {step === 3 && (
+        {/* ══ Custom Step 2 · Environment (context & needs) ══ */}
+        {screen === "environment" && (
           <div className={ex.card}>
-            <p className={ex.question}>Who are your students?</p>
+            <p className={ex.question}>Who are your students, and what do they need?</p>
             <p className={ex.questionSub}>
-              Be specific. Treat what they bring as an asset (<Term term="CRP">CRP</Term>).
+              Ground the lesson in reality. Treat what students bring as an asset (
+              <Term term="CRP">CRP</Term>).
             </p>
 
             {["studentInterests", "communityContext", "culturalAssets"].map((f) => (
@@ -594,8 +784,134 @@ export default function Generate({ input, setInput }) {
               </div>
             ))}
 
+            <div className={ex.fieldGroup}>
+              <label className={ex.fieldLabel} htmlFor="language">
+                Language support
+              </label>
+              <input
+                id="language"
+                className={ex.comboboxInput}
+                value={input.language}
+                placeholder="e.g. English, English + Spanish"
+                onChange={(e) => set("language", e.target.value)}
+              />
+            </div>
+
+            <div className={ex.fieldGroup}>
+              <div className={ex.metricGroupHeader} style={{ marginBottom: "0.6rem" }}>
+                <label className={ex.fieldLabel} style={{ marginBottom: 0 }}>
+                  Multilingual / neurodiverse needs
+                </label>
+                <button
+                  type="button"
+                  className={`${ex.selectAllBtn} ${
+                    input.learningNeeds.length > 0 ? ex.selectAllBtnActive : ""
+                  }`}
+                  onClick={toggleAllNeeds}
+                >
+                  {allNeeds ? "Deselect All" : "Select All"}
+                </button>
+              </div>
+              <div className={ex.choiceList}>
+                {learningNeedOptions.map((n) => (
+                  <Choice
+                    key={n}
+                    selected={input.learningNeeds.includes(n)}
+                    onClick={() => toggleNeed(n)}
+                  >
+                    {n}
+                  </Choice>
+                ))}
+              </div>
+            </div>
+
+            <div className={ex.fieldGroup}>
+              <label className={ex.fieldLabel}>Additional supports</label>
+              <div className={ex.choiceList}>
+                {supportOptions.map((o) => (
+                  <Choice
+                    key={o.key}
+                    selected={input[o.key]}
+                    onClick={() => set(o.key, !input[o.key])}
+                  >
+                    {o.label}
+                  </Choice>
+                ))}
+              </div>
+            </div>
+
+            <div className={ex.fieldGroup}>
+              <label className={ex.fieldLabel}>Resource / tech level</label>
+              <div className={ex.choiceList}>
+                {resourceLevels.map((r) => (
+                  <Choice
+                    key={r.value}
+                    selected={input.resourceLevel === r.value}
+                    onClick={() => set("resourceLevel", r.value)}
+                  >
+                    {r.label}
+                  </Choice>
+                ))}
+              </div>
+            </div>
+
             <div className={ex.footerNav} style={{ marginTop: "1.25rem", maxWidth: "none" }}>
-              <button type="button" className={ex.btnBack} onClick={() => goToStep(2, 1)}>
+              <button type="button" className={ex.btnBack} onClick={() => go("target", 1)}>
+                ← Back
+              </button>
+              <button
+                type="button"
+                className={`${ex.btnPrimary} ${ex.btnPrimaryActive}`}
+                onClick={() => go("output", -1)}
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ══ Custom Step 3 · Output (the deliverable) ══ */}
+        {screen === "output" && (
+          <div className={ex.card}>
+            <p className={ex.question}>What should we make?</p>
+            <p className={ex.questionSub}>
+              Choose the deliverable — everything above is folded into it.
+            </p>
+
+            <div className={ex.fieldGroup}>
+              <label className={ex.fieldLabel}>What to make</label>
+              <div className={ex.choiceList}>
+                {outputTypes.map((o) => (
+                  <Choice
+                    key={o.value}
+                    selected={input.outputType === o.value}
+                    onClick={() => setOutputType(o.value)}
+                  >
+                    {o.label}
+                  </Choice>
+                ))}
+              </div>
+            </div>
+
+            {showFormat && (
+              <div className={ex.fieldGroup}>
+                <label className={ex.fieldLabel}>Format</label>
+                <div className={ex.choiceList}>
+                  {formats.map((f) => (
+                    <Choice
+                      key={f.value}
+                      selected={format === f.value}
+                      onClick={() => setFormat(f.value)}
+                    >
+                      {f.label}
+                    </Choice>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className={ex.footerNav} style={{ marginTop: "1.25rem", maxWidth: "none" }}>
+              <button type="button" className={ex.btnBack} onClick={() => go("environment", 1)}>
                 ← Back
               </button>
               <button
@@ -607,16 +923,21 @@ export default function Generate({ input, setInput }) {
                 {loading ? <span className={ex.spinner} /> : "Generate →"}
               </button>
             </div>
+
+            <p className={ex.excludedNote}>
+              Review AI output for accuracy and cultural fit before you use it in class. Never enter
+              anything that identifies a specific student.
+            </p>
           </div>
         )}
 
-        {/* ── Step 4: Results ── */}
-        {step === 4 && (
+        {/* ══ Results (shared by both flows) ══ */}
+        {screen === "results" && (
           <>
             <div className={ex.card}>
               <p className={ex.question}>Draft for {resultsTitle}</p>
               <div className={ex.footerNav} style={{ marginTop: "1.5rem", maxWidth: "none" }}>
-                <button type="button" className={ex.btnBack} onClick={() => goToStep(3, 1)}>
+                <button type="button" className={ex.btnBack} onClick={resultsBack}>
                   ← Back
                 </button>
                 <button type="button" className={ex.btnBack} disabled={loading} onClick={restart}>
@@ -650,17 +971,8 @@ export default function Generate({ input, setInput }) {
               )}
             </div>
 
-            <div
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-              className={ex.srOnly}
-            >
-              {loading
-                ? "Generating your draft…"
-                : output
-                  ? "Draft ready."
-                  : ""}
+            <div role="status" aria-live="polite" aria-atomic="true" className={ex.srOnly}>
+              {loading ? "Generating your draft…" : output ? "Draft ready." : ""}
             </div>
 
             <section className={ex.resultsSection} aria-label="Generated draft">
@@ -701,11 +1013,7 @@ export default function Generate({ input, setInput }) {
 
               {!loading && output && (
                 <>
-                  {/* Trend-expand adaptation: bias/fit review accordion */}
-                  <div
-                    className={ex.statCard}
-                    style={{ marginBottom: "1rem", animationDelay: "0ms" }}
-                  >
+                  <div className={ex.statCard} style={{ marginBottom: "1rem", animationDelay: "0ms" }}>
                     <div className={ex.statMeta}>
                       <span className={ex.statLabel}>Bias &amp; fit review</span>
                     </div>
@@ -747,12 +1055,23 @@ export default function Generate({ input, setInput }) {
                   </div>
 
                   <div className={ex.resultStack} key={genId}>
-                    <div
-                      className={ex.statCard}
-                      style={{ animationDelay: "40ms" }}
-                    >
+                    <div className={ex.statCard} style={{ animationDelay: "40ms" }}>
                       <div className={ex.statMeta}>
                         <span className={ex.statLabel}>Draft</span>
+                        {output._source && (
+                          <span
+                            className={`${ex.sourceBadge}${
+                              output._source === "mock" ? ` ${ex.sourceBadgeMock}` : ""
+                            }`}
+                            title={
+                              output._source === "gemini"
+                                ? "Generated live by the Gemini API."
+                                : "The live AI was unavailable, so this is a local template draft (run `vercel dev` or deploy to use Gemini)."
+                            }
+                          >
+                            {output._source === "gemini" ? "✨ Live AI" : "Local draft"}
+                          </span>
+                        )}
                       </div>
                       <div className={ex.statValue} style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)" }}>
                         {output.title}
@@ -802,7 +1121,6 @@ export default function Generate({ input, setInput }) {
               )}
             </section>
 
-            {/* Compare adaptation: revise panel */}
             {!loading && output && (
               <div className={ex.compareSection}>
                 <AnimatePresence mode="wait" initial={false}>

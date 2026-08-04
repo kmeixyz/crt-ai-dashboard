@@ -1,10 +1,16 @@
-// Sample classroom scenarios — power the "Load a sample" quick-start in the
-// input form.
+// Pre-built templates — power Path A ("Use a Pre-Built Template") on the
+// Resource Builder fork screen. Each carries display metadata for its card
+// (title / tag / blurb) plus the `input` payload it pre-fills on the Review
+// screen.
 
 export const scenarios = [
   {
     id: "ap-calc",
     label: "AP Calculus · Derivatives",
+    title: "AP Calculus · Derivatives",
+    tag: "Mathematics",
+    blurb:
+      "Derivatives as rates of change, anchored in sneaker resale, streaming, and sports analytics.",
     input: {
       subject: "Mathematics",
       course: "AP Calculus AB",
@@ -23,6 +29,10 @@ export const scenarios = [
   {
     id: "algebra-rural",
     label: "Algebra · Linear functions (rural)",
+    title: "Algebra · Linear Functions",
+    tag: "Mathematics",
+    blurb:
+      "Slope & linear functions for a rural, low-connectivity classroom with a wide readiness range.",
     input: {
       subject: "Mathematics",
       course: "Algebra I",
@@ -41,6 +51,10 @@ export const scenarios = [
   {
     id: "env-sci",
     label: "Environmental Science · Climate resilience",
+    title: "Environmental Science · Climate",
+    tag: "Science",
+    blurb:
+      "Urban heat islands and climate resilience as a hands-on, project-based investigation.",
     input: {
       subject: "Science",
       course: "Environmental Science",
@@ -59,6 +73,10 @@ export const scenarios = [
   {
     id: "bio-genetics",
     label: "Biology · Genetics & community health",
+    title: "Biology · Genetics",
+    tag: "Science",
+    blurb:
+      "Inheritance and traits connected to family knowledge and community health.",
     input: {
       subject: "Science",
       course: "Biology",
